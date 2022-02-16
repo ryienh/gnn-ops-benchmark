@@ -1,0 +1,318 @@
+
+{
+  "schemaVersion": 1,
+  "deviceProperties": [
+    {
+      "id": 0, "name": "NVIDIA A100-SXM4-40GB", "totalGlobalMem": 42505273344,
+      "computeMajor": 8, "computeMinor": 0,
+      "maxThreadsPerBlock": 1024, "maxThreadsPerMultiprocessor": 2048,
+      "regsPerBlock": 65536, "regsPerMultiprocessor": 65536, "warpSize": 32,
+      "sharedMemPerBlock": 49152, "sharedMemPerMultiprocessor": 167936,
+      "numSms": 108, "sharedMemPerBlockOptin": 166912
+    }
+  ],
+  "traceEvents": [
+  {
+    "ph": "X", "cat": "Operator", 
+    "name": "aten::empty", "pid": 936002, "tid": "936002",
+    "ts": 1644390012951628, "dur": 35,
+    "args": {
+      "Device": 936002, "External id": 2,
+      "Trace name": "PyTorch Profiler", "Trace iteration": 0 ,
+      "Input Dims": [[], [], [], [], [], []], "Call stack": "/gpfs/mira-home/rhosseini/gnn-kernel-benchmark/mycondaenv/lib/python3.8/site-packages/torch/autograd/profiler.py(611): __init__;/gpfs/mira-home/rhosseini/gnn-kernel-benchmark/mycondaenv/lib/python3.8/site-packages/torch/profiler/profiler.py(312): step;profile/profile_models.py(111): profile_model;profile/profile_models.py(160): main;profile/profile_models.py(168): <module>", "Input type": ["GenericList", "Int", "", "", "Bool", ""]
+    }
+  },
+  {
+    "ph": "X", "cat": "Operator", 
+    "name": "aten::zero_", "pid": 936002, "tid": "936002",
+    "ts": 1644390012951672, "dur": 10,
+    "args": {
+      "Device": 936002, "External id": 3,
+      "Trace name": "PyTorch Profiler", "Trace iteration": 0 ,
+      "Input Dims": [[1]], "Call stack": "/gpfs/mira-home/rhosseini/gnn-kernel-benchmark/mycondaenv/lib/python3.8/site-packages/torch/autograd/profiler.py(611): __init__;/gpfs/mira-home/rhosseini/gnn-kernel-benchmark/mycondaenv/lib/python3.8/site-packages/torch/profiler/profiler.py(312): step;profile/profile_models.py(111): profile_model;profile/profile_models.py(160): main;profile/profile_models.py(168): <module>", "Input type": ["float"]
+    }
+  },
+  {
+    "ph": "X", "cat": "Operator", 
+    "name": "aten::zeros", "pid": 936002, "tid": "936002",
+    "ts": 1644390012951588, "dur": 95,
+    "args": {
+      "Device": 936002, "External id": 1,
+      "Trace name": "PyTorch Profiler", "Trace iteration": 0 ,
+      "Input Dims": [[], [], [], [], []], "Call stack": "/gpfs/mira-home/rhosseini/gnn-kernel-benchmark/mycondaenv/lib/python3.8/site-packages/torch/autograd/profiler.py(611): __init__;/gpfs/mira-home/rhosseini/gnn-kernel-benchmark/mycondaenv/lib/python3.8/site-packages/torch/profiler/profiler.py(312): step;profile/profile_models.py(111): profile_model;profile/profile_models.py(160): main;profile/profile_models.py(168): <module>", "Input type": ["GenericList", "Int", "", "", "Bool"]
+    }
+  },
+  {
+    "ph": "X", "cat": "Operator", 
+    "name": "aten::empty", "pid": 936002, "tid": "936002",
+    "ts": 1644390012951701, "dur": 8,
+    "args": {
+      "Device": 936002, "External id": 5,
+      "Trace name": "PyTorch Profiler", "Trace iteration": 0 ,
+      "Input Dims": [[], [], [], [], [], []], "Call stack": "/gpfs/mira-home/rhosseini/gnn-kernel-benchmark/mycondaenv/lib/python3.8/site-packages/torch/autograd/profiler.py(614): __enter__;/gpfs/mira-home/rhosseini/gnn-kernel-benchmark/mycondaenv/lib/python3.8/site-packages/torch/profiler/profiler.py(313): step;profile/profile_models.py(111): profile_model;profile/profile_models.py(160): main;profile/profile_models.py(168): <module>", "Input type": ["GenericList", "Int", "", "", "", ""]
+    }
+  },
+  {
+    "ph": "X", "cat": "Operator", 
+    "name": "aten::empty", "pid": 936002, "tid": "936002",
+    "ts": 1644390012951977, "dur": 13,
+    "args": {
+      "Device": 936002, "External id": 7,
+      "Trace name": "PyTorch Profiler", "Trace iteration": 0 ,
+      "Input Dims": [[], [], [], [], [], []], "Call stack": "/gpfs/mira-home/rhosseini/gnn-kernel-benchmark/mycondaenv/lib/python3.8/site-packages/torch/autograd/profiler.py(611): __init__;/gpfs/mira-home/rhosseini/gnn-kernel-benchmark/mycondaenv/lib/python3.8/site-packages/torch/utils/data/dataloader.py(518): __next__;/gpfs/mira-home/rhosseini/gnn-kernel-benchmark/mycondaenv/lib/python3.8/site-packages/tqdm/std.py(1178): __iter__;profile/profile_models.py(96): profile_model;profile/profile_models.py(160): main;profile/profile_models.py(168): <module>", "Input type": ["GenericList", "Int", "", "", "Bool", ""]
+    }
+  },
+  {
+    "ph": "X", "cat": "Operator", 
+    "name": "aten::zero_", "pid": 936002, "tid": "936002",
+    "ts": 1644390012951994, "dur": 7,
+    "args": {
+      "Device": 936002, "External id": 8,
+      "Trace name": "PyTorch Profiler", "Trace iteration": 0 ,
+      "Input Dims": [[1]], "Call stack": "/gpfs/mira-home/rhosseini/gnn-kernel-benchmark/mycondaenv/lib/python3.8/site-packages/torch/autograd/profiler.py(611): __init__;/gpfs/mira-home/rhosseini/gnn-kernel-benchmark/mycondaenv/lib/python3.8/site-packages/torch/utils/data/dataloader.py(518): __next__;/gpfs/mira-home/rhosseini/gnn-kernel-benchmark/mycondaenv/lib/python3.8/site-packages/tqdm/std.py(1178): __iter__;profile/profile_models.py(96): profile_model;profile/profile_models.py(160): main;profile/profile_models.py(168): <module>", "Input type": ["float"]
+    }
+  },
+  {
+    "ph": "X", "cat": "Operator", 
+    "name": "aten::zeros", "pid": 936002, "tid": "936002",
+    "ts": 1644390012951966, "dur": 36,
+    "args": {
+      "Device": 936002, "External id": 6,
+      "Trace name": "PyTorch Profiler", "Trace iteration": 0 ,
+      "Input Dims": [[], [], [], [], []], "Call stack": "/gpfs/mira-home/rhosseini/gnn-kernel-benchmark/mycondaenv/lib/python3.8/site-packages/torch/autograd/profiler.py(611): __init__;/gpfs/mira-home/rhosseini/gnn-kernel-benchmark/mycondaenv/lib/python3.8/site-packages/torch/utils/data/dataloader.py(518): __next__;/gpfs/mira-home/rhosseini/gnn-kernel-benchmark/mycondaenv/lib/python3.8/site-packages/tqdm/std.py(1178): __iter__;profile/profile_models.py(96): profile_model;profile/profile_models.py(160): main;profile/profile_models.py(168): <module>", "Input type": ["GenericList", "Int", "", "", "Bool"]
+    }
+  },
+  {
+    "ph": "X", "cat": "Operator", 
+    "name": "aten::empty", "pid": 936002, "tid": "936002",
+    "ts": 1644390012952020, "dur": 9,
+    "args": {
+      "Device": 936002, "External id": 10,
+      "Trace name": "PyTorch Profiler", "Trace iteration": 0 ,
+      "Input Dims": [[], [], [], [], [], []], "Call stack": "/gpfs/mira-home/rhosseini/gnn-kernel-benchmark/mycondaenv/lib/python3.8/site-packages/torch/autograd/profiler.py(614): __enter__;/gpfs/mira-home/rhosseini/gnn-kernel-benchmark/mycondaenv/lib/python3.8/site-packages/torch/utils/data/dataloader.py(518): __next__;/gpfs/mira-home/rhosseini/gnn-kernel-benchmark/mycondaenv/lib/python3.8/site-packages/tqdm/std.py(1178): __iter__;profile/profile_models.py(96): profile_model;profile/profile_models.py(160): main;profile/profile_models.py(168): <module>", "Input type": ["GenericList", "Int", "", "", "", ""]
+    }
+  },
+  {
+    "ph": "X", "cat": "Operator", 
+    "name": "enumerate(DataLoader)#_SingleProcessDataLoaderIter.__next__", "pid": 936002, "tid": "936002",
+    "ts": 1644390012952010, "dur": 36,
+    "args": {
+      "Device": 936002, "External id": 9,
+      "Trace name": "PyTorch Profiler", "Trace iteration": 0 ,
+      "Call stack": "/gpfs/mira-home/rhosseini/gnn-kernel-benchmark/mycondaenv/lib/python3.8/site-packages/torch/autograd/profiler.py(614): __enter__;/gpfs/mira-home/rhosseini/gnn-kernel-benchmark/mycondaenv/lib/python3.8/site-packages/torch/utils/data/dataloader.py(518): __next__;/gpfs/mira-home/rhosseini/gnn-kernel-benchmark/mycondaenv/lib/python3.8/site-packages/tqdm/std.py(1178): __iter__;profile/profile_models.py(96): profile_model;profile/profile_models.py(160): main;profile/profile_models.py(168): <module>"
+    }
+  },
+  {
+    "ph": "X", "cat": "Operator", 
+    "name": "ProfilerStep#2", "pid": 936002, "tid": "936002",
+    "ts": 1644390012951694, "dur": 538,
+    "args": {
+      "Device": 936002, "External id": 4,
+      "Trace name": "PyTorch Profiler", "Trace iteration": 0 ,
+      "Call stack": "/gpfs/mira-home/rhosseini/gnn-kernel-benchmark/mycondaenv/lib/python3.8/site-packages/torch/autograd/profiler.py(614): __enter__;/gpfs/mira-home/rhosseini/gnn-kernel-benchmark/mycondaenv/lib/python3.8/site-packages/torch/profiler/profiler.py(313): step;profile/profile_models.py(111): profile_model;profile/profile_models.py(160): main;profile/profile_models.py(168): <module>"
+    }
+  },
+  {
+    "ph": "i", "s": "t", "name": "[memory]",
+    "pid": 936002, "tid": 936002,
+    "ts": 1644390012951640,
+    "args": {
+      "Device Type": 0, "Device Id": -1, "Bytes": 4
+    }
+  },
+  {
+    "ph": "i", "s": "t", "name": "[memory]",
+    "pid": 936002, "tid": 936002,
+    "ts": 1644390012951707,
+    "args": {
+      "Device Type": 0, "Device Id": -1, "Bytes": 16
+    }
+  },
+  {
+    "ph": "i", "s": "t", "name": "[memory]",
+    "pid": 936002, "tid": 936002,
+    "ts": 1644390012951713,
+    "args": {
+      "Device Type": 0, "Device Id": -1, "Bytes": -16
+    }
+  },
+  {
+    "ph": "i", "s": "t", "name": "[memory]",
+    "pid": 936002, "tid": 936002,
+    "ts": 1644390012951717,
+    "args": {
+      "Device Type": 0, "Device Id": -1, "Bytes": -4
+    }
+  },
+  {
+    "ph": "i", "s": "t", "name": "[memory]",
+    "pid": 936002, "tid": 936002,
+    "ts": 1644390012951987,
+    "args": {
+      "Device Type": 0, "Device Id": -1, "Bytes": 4
+    }
+  },
+  {
+    "ph": "i", "s": "t", "name": "[memory]",
+    "pid": 936002, "tid": 936002,
+    "ts": 1644390012952027,
+    "args": {
+      "Device Type": 0, "Device Id": -1, "Bytes": 16
+    }
+  },
+  {
+    "ph": "i", "s": "t", "name": "[memory]",
+    "pid": 936002, "tid": 936002,
+    "ts": 1644390012952031,
+    "args": {
+      "Device Type": 0, "Device Id": -1, "Bytes": -16
+    }
+  },
+  {
+    "ph": "i", "s": "t", "name": "[memory]",
+    "pid": 936002, "tid": 936002,
+    "ts": 1644390012952034,
+    "args": {
+      "Device Type": 0, "Device Id": -1, "Bytes": -4
+    }
+  },
+  {
+    "ph": "X", "cat": "Runtime", 
+    "name": "cudaDeviceSynchronize", "pid": 936002, "tid": "936002",
+    "ts": 1644390012952288, "dur": 11,
+    "args": {
+      "cbid": 165, "correlation": 6164,
+      "external id": 0, "external ts": 1644390012952034
+    }
+  },
+  {
+    "name": "process_name", "ph": "M", "ts": 1644390012951504, "pid": 936002, "tid": 0,
+    "args": {
+      "name": "python"
+    }
+  },
+  {
+    "name": "process_labels", "ph": "M", "ts": 1644390012951504, "pid": 936002, "tid": 0,
+    "args": {
+      "labels": "CPU"
+    }
+  },
+  {
+    "name": "process_name", "ph": "M", "ts": 1644390012951504, "pid": 0, "tid": 0,
+    "args": {
+      "name": "python"
+    }
+  },
+  {
+    "name": "process_labels", "ph": "M", "ts": 1644390012951504, "pid": 0, "tid": 0,
+    "args": {
+      "labels": "GPU 0"
+    }
+  },
+  {
+    "name": "process_name", "ph": "M", "ts": 1644390012951504, "pid": 1, "tid": 0,
+    "args": {
+      "name": "python"
+    }
+  },
+  {
+    "name": "process_labels", "ph": "M", "ts": 1644390012951504, "pid": 1, "tid": 0,
+    "args": {
+      "labels": "GPU 1"
+    }
+  },
+  {
+    "name": "process_name", "ph": "M", "ts": 1644390012951504, "pid": 2, "tid": 0,
+    "args": {
+      "name": "python"
+    }
+  },
+  {
+    "name": "process_labels", "ph": "M", "ts": 1644390012951504, "pid": 2, "tid": 0,
+    "args": {
+      "labels": "GPU 2"
+    }
+  },
+  {
+    "name": "process_name", "ph": "M", "ts": 1644390012951504, "pid": 3, "tid": 0,
+    "args": {
+      "name": "python"
+    }
+  },
+  {
+    "name": "process_labels", "ph": "M", "ts": 1644390012951504, "pid": 3, "tid": 0,
+    "args": {
+      "labels": "GPU 3"
+    }
+  },
+  {
+    "name": "process_name", "ph": "M", "ts": 1644390012951504, "pid": 4, "tid": 0,
+    "args": {
+      "name": "python"
+    }
+  },
+  {
+    "name": "process_labels", "ph": "M", "ts": 1644390012951504, "pid": 4, "tid": 0,
+    "args": {
+      "labels": "GPU 4"
+    }
+  },
+  {
+    "name": "process_name", "ph": "M", "ts": 1644390012951504, "pid": 5, "tid": 0,
+    "args": {
+      "name": "python"
+    }
+  },
+  {
+    "name": "process_labels", "ph": "M", "ts": 1644390012951504, "pid": 5, "tid": 0,
+    "args": {
+      "labels": "GPU 5"
+    }
+  },
+  {
+    "name": "process_name", "ph": "M", "ts": 1644390012951504, "pid": 6, "tid": 0,
+    "args": {
+      "name": "python"
+    }
+  },
+  {
+    "name": "process_labels", "ph": "M", "ts": 1644390012951504, "pid": 6, "tid": 0,
+    "args": {
+      "labels": "GPU 6"
+    }
+  },
+  {
+    "name": "process_name", "ph": "M", "ts": 1644390012951504, "pid": 7, "tid": 0,
+    "args": {
+      "name": "python"
+    }
+  },
+  {
+    "name": "process_labels", "ph": "M", "ts": 1644390012951504, "pid": 7, "tid": 0,
+    "args": {
+      "labels": "GPU 7"
+    }
+  },
+  {
+    "name": "thread_name", "ph": "M", "ts": 1644390012951504, "pid": 936002, "tid": "936002",
+    "args": {
+      "name": "thread 936002 (python)"
+    }
+  },
+  {
+    "ph": "X", "cat": "Trace", "ts": 1644390012951504, "dur": 804,
+    "pid": "Traces", "tid": "PyTorch Profiler",
+    "name": "PyTorch Profiler (0)",
+    "args": {
+      "Op count": 0
+    }
+  },
+  {
+    "name": "Iteration Start: PyTorch Profiler", "ph": "i", "s": "g",
+    "pid": "Traces", "tid": "Trace PyTorch Profiler", "ts": 1644390012951504
+  },
+  {
+    "name": "Record Window End", "ph": "i", "s": "g",
+    "pid": "", "tid": "", "ts": 1644390012952352
+  }
+]}
