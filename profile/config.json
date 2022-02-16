@@ -1,0 +1,17 @@
+{
+    "models": [
+        "AttentiveFPREG"
+    ],
+    "datasets": [
+        "FakeDataset"
+    ],
+    "batch_size": 64,
+    "num_graphs": 128,
+    "profiler": {
+        "wait": 1,
+        "warmup": 1,
+        "active": 3,
+        "repeat": 2
+    },
+    "verbose": 1
+}
