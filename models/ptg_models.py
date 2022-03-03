@@ -35,12 +35,12 @@ class AttentiveFPREG(torch.nn.Module):
     def __init__(
         self,
         input_dim,
-        hidden_dim=250,
-        dropout=0.0,
-        num_conv_layers=10,
-        num_out_channels=2,
-        edge_dim=1,  # FIXME: fix hardcode
-        num_timesteps=2,
+        hidden_dim,
+        dropout,
+        num_conv_layers,
+        num_out_channels,
+        edge_dim,
+        num_timesteps,
     ):
 
         super(AttentiveFPREG, self).__init__()
@@ -57,9 +57,7 @@ class AttentiveFPREG(torch.nn.Module):
         )
         # fully connected layers
         self.post_mp = torch.nn.Sequential(
-            torch.nn.Linear(num_out_channels, int(num_out_channels / 2)),
-            torch.nn.ReLU(),
-            torch.nn.Linear(int(num_out_channels / 2), 1),
+            torch.nn.Linear(num_out_channels, 1),
         )
 
     def forward(self, data):
@@ -94,13 +92,7 @@ https://arxiv.org/abs/1905.05178
 
 
 class GraphUNetREG(torch.nn.Module):
-    def __init__(
-        self,
-        input_dim,
-        hidden_dim=32,
-        num_out_channels=10,
-        depth=10,
-    ):
+    def __init__(self, input_dim, hidden_dim, num_out_channels, depth):
 
         super(GraphUNetREG, self).__init__()
 
@@ -153,7 +145,7 @@ https://arxiv.org/abs/1706.08566
 class SchNetREG(torch.nn.Module):
     def __init__(
         self,
-        num_out_channels=10,
+        num_out_channels,
     ):
 
         super(SchNetREG, self).__init__()
@@ -164,9 +156,7 @@ class SchNetREG(torch.nn.Module):
         )  # all defaults right now -- add explicit hyperparams during benchmark
         # fully connected layers
         self.post_mp = torch.nn.Sequential(
-            torch.nn.Linear(num_out_channels, int(num_out_channels / 2)),
-            torch.nn.ReLU(),
-            torch.nn.Linear(int(num_out_channels / 2), 1),
+            torch.nn.Linear(num_out_channels, 1),
         )
 
     def forward(self, data):
@@ -182,11 +172,11 @@ class SchNetREG(torch.nn.Module):
         # call model
         x = self.attentive_fp(x, edge_index, batch)
 
-        # # pooling
-        # x = global_mean_pool(x, batch)
+        # pooling
+        x = global_mean_pool(x, batch)
 
         # MLP
-        # x = self.post_mp(x)
+        x = self.post_mp(x)
 
         return x
 

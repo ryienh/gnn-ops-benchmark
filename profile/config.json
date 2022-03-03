@@ -1,6 +1,14 @@
 {
     "models": [
-        "AttentiveFPREG"
+        {
+            "name": "AttentiveFPREG",
+            "hidden_dim": 64,
+            "dropout": 0.0,
+            "num_conv_layers": 10,
+            "num_out_channels": 2,
+            "edge_dim": 1,
+            "num_timesteps": 40
+        }
     ],
     "datasets": [
         "FakeDataset"
