@@ -102,7 +102,7 @@ class GraphUNetREG(torch.nn.Module):
         super(GraphUNetREG, self).__init__()
 
         # call attentive model
-        self.attentive_fp = GraphUNet(
+        self.graph_unet = GraphUNet(
             in_channels=input_dim,
             hidden_channels=hidden_dim,
             out_channels=num_out_channels,
@@ -110,9 +110,7 @@ class GraphUNetREG(torch.nn.Module):
         )
         # fully connected layers
         self.post_mp = torch.nn.Sequential(
-            torch.nn.Linear(num_out_channels, int(num_out_channels / 2)),
-            torch.nn.ReLU(),
-            torch.nn.Linear(int(num_out_channels / 2), 1),
+            torch.nn.Linear(num_out_channels, 1),
         )
 
     def forward(self, data):
@@ -126,7 +124,7 @@ class GraphUNetREG(torch.nn.Module):
             x = torch.ones(data.num_nodes, 1)
 
         # call model
-        x = self.attentive_fp(x, edge_index, batch)
+        x = self.graph_unet(x, edge_index, batch)
 
         # pooling
         x = global_mean_pool(x, batch)

@@ -60,7 +60,7 @@ class OpProfiler:
                 print(
                     f"Make sure config file contains all relevant params for model {self.model_names[idx]}"
                 )
-                return
+                exit(1)
 
             # init model
             return AttentiveFPREG(
@@ -72,10 +72,28 @@ class OpProfiler:
                 edge_dim=edge_dim,
                 num_timesteps=num_timesteps,
             )
-        elif self.model_names[idx] == "GraphUNetREG":
-            return GraphUNetREG(input_dim=in_dims)
-        elif self.model_names[idx] == "SchNetREG":
-            return SchNetREG()
+
+        elif self.model_names[idx] == "GraphUNet":
+            # unpack config args
+            try:
+                hidden_dim = self.models[idx]["hidden_dim"]
+                num_out_channels = self.models[idx]["num_out_channels"]
+                depth = self.models[idx]["depth"]
+
+            except KeyError:
+                print(
+                    f"Make sure config file contains all relevant params for model {self.model_names[idx]}"
+                )
+                exit(1)
+
+            # init model
+            return GraphUNetREG(
+                input_dim=in_dims,
+                hidden_dim=hidden_dim,
+                num_out_channels=num_out_channels,
+                depth=depth,
+            )
+
         else:
             raise NotImplementedError(
                 f"Model {self.model_names[idx]} not yet implemented."

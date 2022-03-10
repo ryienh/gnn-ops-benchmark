@@ -1,6 +1,13 @@
 {
     "models": [
         {
+            "name": "GraphUNet",
+            "batch_size": 64,
+            "hidden_dim": 512,
+            "num_out_channels": 3,
+            "depth": 4
+        },
+        {
             "name": "AttentiveFPREG",
             "batch_size": 64,
             "hidden_dim": 512,
