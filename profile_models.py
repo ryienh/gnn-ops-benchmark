@@ -1,8 +1,6 @@
 from graph_benchmark.profile.OpProfiler import OpProfiler
 import click
 
-# import wandb
-
 
 @click.command()
 @click.option(
@@ -13,12 +11,9 @@ import click
 )
 def main(config):
 
-    # wandb.init(project="gnn-kernel-benchmark")
-
     # init Profiler
     my_profiler = OpProfiler(config)
     my_profiler.profile_models()
-    print("hello world!")
 
 
 if __name__ == "__main__":

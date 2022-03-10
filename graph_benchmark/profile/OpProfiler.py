@@ -31,6 +31,7 @@ class OpProfiler:
         self.models = self._config("models")  # list of dics, once for each model
         self.model_names = [model["name"] for model in self.models]
         self.datasets = self._config("datasets")
+        self.dataset_names = [ds["name"] for ds in self.datasets]
 
     def _config(self, attr):
 
@@ -80,8 +81,9 @@ class OpProfiler:
                 f"Model {self.model_names[idx]} not yet implemented."
             )
 
-    def _get_data_loaders_from_str(self, model_idx, dataset):
+    def _get_data_loaders_from_str(self, model_idx, dataset_idx):
 
+        # get batch size from model (allows flexibility to run diff models on same ds but diff batch size)
         try:
             batch_size = self.models[model_idx]["batch_size"]
         except KeyError:
@@ -89,18 +91,41 @@ class OpProfiler:
                 f"Model {self.model_names[model_idx]} does not have a batch_size value. Please update config file and try again."
             )
             return
-        try:
-            num_graphs = self.models[model_idx]["num_graphs"]
-        except KeyError:
-            print(
-                f"Model {self.model_names[model_idx]} does not have a num_graphs value. Please update config file and try again."
-            )
-            return
 
-        if dataset == "FakeDataset":
-            dataset = FakeDataset(num_graphs=num_graphs)
+        # get dataset params
+
+        if self.dataset_names[dataset_idx] == "FakeDataset":
+            try:
+                num_graphs = self.datasets[dataset_idx]["num_graphs"]
+                avg_num_nodes = self.datasets[dataset_idx]["avg_num_nodes"]
+                avg_degree = self.datasets[dataset_idx]["avg_degree"]
+                num_node_features = self.datasets[dataset_idx]["num_node_features"]
+                edge_dim = self.datasets[dataset_idx]["edge_dim"]
+                num_classes = self.datasets[dataset_idx]["num_classes"]
+                task = self.datasets[dataset_idx]["task"]
+                is_undirected = self.datasets[dataset_idx]["is_undirected"]
+            except KeyError:
+                print(
+                    f"Dataset {self.dataset_names[dataset_idx]} is missing one or more keys. Please update config file and try again."
+                )
+                return
+
+            # init dataset
+            dataset = FakeDataset(
+                num_graphs=num_graphs,
+                avg_num_nodes=avg_num_nodes,
+                avg_degree=avg_degree,
+                num_channels=num_node_features,
+                edge_dim=edge_dim,
+                num_classes=num_classes,
+                task=task,
+                is_undirected=is_undirected,
+            )
+
         else:
-            raise NotImplementedError(f"Dataset {dataset} not yet implemented")
+            raise NotImplementedError(
+                f"Dataset {self.dataset_names[dataset_idx]} not yet implemented"
+            )
 
         # create loader
         tr_loader = DataLoader(
@@ -139,14 +164,15 @@ class OpProfiler:
                 )
             )
 
-    def profile_model(self, idx, dataset):
+    def profile_model(self, model_idx, dataset_idx):
         """
         Profiles a given model and dataset.
 
         Requires CUDA. Records traces for tensorboard visualization, and writes summary to file.
         """
 
-        model_name = self.model_names[idx]
+        model_name = self.model_names[model_idx]
+        dataset_name = self.dataset_names[dataset_idx]
 
         # set device
         device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -154,11 +180,11 @@ class OpProfiler:
             raise Exception(f"Profiler requires CUDA but device is {device}")
 
         # init dataset
-        tr_loader, va_loader = self._get_data_loaders_from_str(idx, dataset)
+        tr_loader, va_loader = self._get_data_loaders_from_str(model_idx, dataset_idx)
 
         # init model
         model = (
-            self._init_model_from_str(idx, tr_loader).to(device).to(torch.float32)
+            self._init_model_from_str(model_idx, tr_loader).to(device).to(torch.float32)
         )  # FIXME: fix precision hardcode
 
         # define optimizer
@@ -174,13 +200,13 @@ class OpProfiler:
                 repeat=self._config("profiler.repeat"),
             ),  # FIXME: fix hardcodes
             on_trace_ready=torch.profiler.tensorboard_trace_handler(
-                f"./log/tensorboard/{model_name}_{dataset}_train"
+                f"./log/tensorboard/{model_name}_{dataset_name}_train"
             ),
             record_shapes=True,
             profile_memory=True,
             with_stack=True,
         ) as prof_train:
-            # with record_function("model_train"):
+
             # single forward pass + backprop
             model = model.train()
 
@@ -210,13 +236,13 @@ class OpProfiler:
                 repeat=self._config("profiler.repeat"),
             ),
             on_trace_ready=torch.profiler.tensorboard_trace_handler(
-                f"./log/tensorboard/{model_name}_{dataset}_inf"
+                f"./log/tensorboard/{model_name}_{dataset_name}_inf"
             ),
             record_shapes=True,
             profile_memory=True,
             with_stack=True,
         ) as prof_inf:
-            # with record_function("model_inf"):
+
             # single forward pass
             model = model.eval()
 
@@ -248,13 +274,18 @@ class OpProfiler:
 
         # write summaries to file
         self._write_prof_tables_to_file(
-            prof_train, prof_inf, self.model_names[idx], dataset
+            prof_train,
+            prof_inf,
+            self.model_names[model_idx],
+            self.dataset_names[dataset_idx],
         )
 
     def profile_models(self):
         """
         Profile list of models and datasets
         """
+
+        # For GPU monitoring
         wandb.init(project="gnn-kernel-benchmark")
 
         if self._config("verbose"):
@@ -262,15 +293,15 @@ class OpProfiler:
 
             print(self.model_names)
             print("On datasets:")
-            print(self.datasets)
+            print(self.dataset_names)
 
-        for idx, model in enumerate(self.model_names):
-            for dataset in self.datasets:
+        for model_idx, model in enumerate(self.model_names):
+            for ds_idx, dataset in enumerate(self.dataset_names):
 
                 if self._config("verbose"):
                     print(f"Beginning profiling on {model} with {dataset}")
 
                 self.profile_model(
-                    idx,
-                    dataset,
+                    model_idx,
+                    ds_idx,
                 )

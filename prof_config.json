@@ -3,7 +3,6 @@
         {
             "name": "AttentiveFPREG",
             "batch_size": 64,
-            "num_graphs": 20000,
             "hidden_dim": 512,
             "dropout": 0.3,
             "num_conv_layers": 4,
@@ -13,7 +12,17 @@
         }
     ],
     "datasets": [
-        "FakeDataset"
+        {
+            "name": "FakeDataset",
+            "num_graphs": 20000,
+            "avg_num_nodes": 1000,
+            "avg_degree": 10,
+            "num_node_features": 64,
+            "edge_dim": 0,
+            "num_classes": 10,
+            "task": "auto",
+            "is_undirected": 1
+        }
     ],
     "profiler": {
         "wait": 1,
