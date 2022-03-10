@@ -67,6 +67,11 @@ class AttentiveFPREG(torch.nn.Module):
             data.batch,
             data.edge_attr,
         )
+        # FIXME: fix hardcodes
+        x = x.cuda()
+        edge_index = edge_index.cuda()
+        batch = batch.cuda()
+
         edge_attr = torch.ones((edge_index.shape[1], 1)).cuda()
         if data.num_node_features == 0:
             print("Warning: No node features detected.")

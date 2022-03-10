@@ -1,0 +1,25 @@
+{
+    "models": [
+        {
+            "name": "AttentiveFPREG",
+            "batch_size": 64,
+            "num_graphs": 20000,
+            "hidden_dim": 512,
+            "dropout": 0.3,
+            "num_conv_layers": 4,
+            "num_out_channels": 3,
+            "edge_dim": 1,
+            "num_timesteps": 5
+        }
+    ],
+    "datasets": [
+        "FakeDataset"
+    ],
+    "profiler": {
+        "wait": 1,
+        "warmup": 1,
+        "active": 1,
+        "repeat": 1
+    },
+    "verbose": 1
+}
