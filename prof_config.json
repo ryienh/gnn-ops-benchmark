@@ -16,6 +16,14 @@
             "num_out_channels": 3,
             "edge_dim": 1,
             "num_timesteps": 5
+        },
+        {
+            "name": "GATv2",
+            "batch_size": 64,
+            "hidden_dim": 64,
+            "num_layers": 3,
+            "heads": 8,
+            "dropout": 0.5
         }
     ],
     "datasets": [
