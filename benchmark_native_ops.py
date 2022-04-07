@@ -22,10 +22,10 @@ def combine_vals(bm_val, bm_val_native):
     return str(bm_val) + " (" + str(bm_val_native) + ")"
 
 
-def op_native_sort(input, dim, stable):
+def op_native_index_select(input, dim, index):
     """Computes max scatter operation"""
-    out, idx = torch.sort(input=input, dim=dim, stable=stable)
-    return out, idx
+    out = torch.index_select(input=input, dim=dim, index=index)
+    return out
 
 
 # def op_scatter_add_native(src, idx):
@@ -38,11 +38,11 @@ def op_native_sort(input, dim, stable):
 # Configurable hyperparams here
 # dimensions: src size, idx size, src sparsity
 # scatter_mean required 0.82 reduction factor
-op_name = "native_sort"
+op_name = "native_index_select"
 # native_exists = True
-length_ = int(1600384000 * 0.7)
-length__ = int(40000 * 0.705)
-length___ = int(2000 * 0.45)
+length_ = int(1600384000 * 1.6)
+length__ = int(40000 * 1.75)
+length___ = int(2000 * 0.86)
 # reduce_f_ = [1, 2, 4, 8]
 # idx_dims = src_dims
 sparsities = [0, 0.5, 0.9, 0.99]
@@ -69,7 +69,7 @@ counter = 0
 for sparsity in sparsities:
     for tshape in tshapes:
         for dim in [0, 1, 2]:
-            for stable in [True, False]:
+            for idx_reduce_factor in [1, 2, 4, 8]:
 
                 torch.cuda.empty_cache()
 
@@ -90,11 +90,20 @@ for sparsity in sparsities:
                     input, p=sparsity, training=False, inplace=False
                 )
 
+                # get index based on reduction factor
+                index = torch.randint(
+                    low=0,
+                    high=input.shape[dim],
+                    size=(int(input.shape[dim] / idx_reduce_factor),),
+                    device="cuda",
+                    requires_grad=False,
+                )
+
                 # begin benchmark logic
                 t0 = benchmark.Timer(
-                    stmt="op_native_sort(input, dim, stable)",
-                    setup="from __main__ import op_native_sort",
-                    globals={"input": input, "dim": dim, "stable": stable},
+                    stmt="op_native_index_select(input, dim, index)",
+                    setup="from __main__ import op_native_index_select",
+                    globals={"input": input, "dim": dim, "index": index},
                 )
                 m0 = t0.blocked_autorange()
 
@@ -116,9 +125,11 @@ for sparsity in sparsities:
 
                 input_dims_str = str(len(tshape))
                 sort_dim_str = str(dim)
-                stable_str = str(stable)
+                idx_reduce_factor_str = str(idx_reduce_factor)
 
-                params_str = input_dims_str + "; " + sort_dim_str + "; " + stable_str
+                params_str = (
+                    input_dims_str + "; " + sort_dim_str + "; " + idx_reduce_factor_str
+                )
 
                 formatted_input_dims = str(tshape)
 
@@ -143,7 +154,7 @@ for sparsity in sparsities:
 
 df = pd.DataFrame(data)
 df.columns = [
-    "Input dims, sort dim, stable",
+    "Input dims, index dim, reduce factor (RF)",
     "Input size (>95% mem util)*",
     "Sparsity",
     "GPU clock time",
