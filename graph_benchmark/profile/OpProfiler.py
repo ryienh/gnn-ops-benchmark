@@ -14,7 +14,7 @@ Script to profile aten level ops for several GNN models
 """
 
 import torch
-from ..models.ptg_models import AttentiveFPREG, GraphUNetREG, GATv2REG
+from ..models.ptg_models import AttentiveFPREG, GraphUNetREG, GATv2REG, PNAREG
 from ..datasets.fakeDatasets import FakeDataset
 from torch_geometric.loader import DataLoader
 
@@ -97,6 +97,9 @@ class OpProfiler:
         elif self.model_names[idx] == "GATv2":
             # unpack config args
             try:
+                import pdb
+
+                pdb.set_trace()
                 hidden_dim = self.models[idx]["hidden_dim"]
                 num_layers = self.models[idx]["num_layers"]
                 heads = self.models[idx]["heads"]
@@ -117,17 +120,13 @@ class OpProfiler:
                 dropout=dropout,
             )
 
-        elif self.model_names[idx] == "SchNet":
+        elif self.model_names[idx] == "PNA":
             # unpack config args
             try:
                 hidden_dim = self.models[idx]["hidden_dim"]
-                num_filters = self.models[idx]["num_filters"]
-                num_interactions = self.models[idx]["num_interactions"]
-                num_gaussians = self.models[idx]["num_gaussians"]
-                cutoff = self.models[idx]["cutoff"]
-                max_num_neighbors = self.models[idx]["max_num_neighbors"]
-                readout = self.models[idx]["readout"]
-                dipole = bool(self.models[idx]["dipole"])
+                dropout = self.models[idx]["dropout"]
+                num_conv_layers = self.models[idx]["num_conv_layers"]
+                num_out_channels = self.models[idx]["num_out_channels"]
 
             except KeyError:
                 print(
@@ -136,15 +135,12 @@ class OpProfiler:
                 exit(1)
 
             # init model
-            return SchNetREG(
+            return PNAREG(
+                input_dim=in_dims,
                 hidden_dim=hidden_dim,
-                num_filters=num_filters,
-                num_interactions=num_interactions,
-                num_gaussians=num_gaussians,
-                cutoff=cutoff,
-                max_num_neighbors=max_num_neighbors,
-                readout=readout,
-                dipole=dipole,
+                dropout=dropout,
+                num_conv_layers=num_conv_layers,
+                num_out_channels=num_out_channels,
             )
 
         else:

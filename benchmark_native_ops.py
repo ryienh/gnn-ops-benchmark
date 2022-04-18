@@ -22,10 +22,10 @@ def combine_vals(bm_val, bm_val_native):
     return str(bm_val) + " (" + str(bm_val_native) + ")"
 
 
-def op_native_index_select(input, dim, index):
+def op_native_index_add_(input, dim, index, source):
     """Computes max scatter operation"""
-    out = torch.index_select(input=input, dim=dim, index=index)
-    return out
+    input.index_add_(dim, index, source)
+    return None
 
 
 # def op_scatter_add_native(src, idx):
@@ -38,10 +38,10 @@ def op_native_index_select(input, dim, index):
 # Configurable hyperparams here
 # dimensions: src size, idx size, src sparsity
 # scatter_mean required 0.82 reduction factor
-op_name = "native_index_select"
+op_name = "native_index_add_"
 # native_exists = True
 length_ = int(1600384000 * 1.6)
-length__ = int(40000 * 1.75)
+length__ = int(40000 * 1.7)
 length___ = int(2000 * 0.86)
 # reduce_f_ = [1, 2, 4, 8]
 # idx_dims = src_dims
@@ -53,6 +53,7 @@ tshapes = [
     (length__, length__),
     (length___, length___, length___),
 ]
+
 
 # create data (list of dicts) for csv creation
 data = []
@@ -66,10 +67,10 @@ torch.cuda.empty_cache()
 counter = 0
 # bp()
 # define inputs over hyperparams
-for sparsity in sparsities:
-    for tshape in tshapes:
-        for dim in [0, 1, 2]:
-            for idx_reduce_factor in [1, 2, 4, 8]:
+for sparsity_source in sparsities:
+    for sparsity_self in sparsities:
+        for tshape in tshapes:
+            for dim in range(3):
 
                 torch.cuda.empty_cache()
 
@@ -82,28 +83,49 @@ for sparsity in sparsities:
                 print(f"DEBUG: Current input has dims {len(tshape)}")
 
                 input = torch.rand(
-                    size=tshape, device="cuda", dtype=torch.float32, requires_grad=False
+                    size=tshape,
+                    device="cuda",
+                    dtype=torch.float32,
+                    requires_grad=False,
                 )
 
                 # randomly drop values to create sparsity
                 input = torch.nn.functional.dropout(
-                    input, p=sparsity, training=False, inplace=False
+                    input, p=sparsity_self, training=False, inplace=False
+                )
+
+                source = torch.rand(
+                    size=tshape,
+                    device="cuda",
+                    dtype=torch.float32,
+                    requires_grad=False,
+                )
+
+                # randomly drop values to create sparsity
+                source = torch.nn.functional.dropout(
+                    source, p=sparsity_source, training=False, inplace=False
                 )
 
                 # get index based on reduction factor
                 index = torch.randint(
                     low=0,
-                    high=input.shape[dim],
-                    size=(int(input.shape[dim] / idx_reduce_factor),),
+                    high=int(input.shape[dim]),
+                    # size=(int(input.shape[dim] / reduce_f),),
+                    size=(input.shape[dim],),
                     device="cuda",
                     requires_grad=False,
                 )
 
                 # begin benchmark logic
                 t0 = benchmark.Timer(
-                    stmt="op_native_index_select(input, dim, index)",
-                    setup="from __main__ import op_native_index_select",
-                    globals={"input": input, "dim": dim, "index": index},
+                    stmt="op_native_index_add_(input, dim, index, source)",
+                    setup="from __main__ import op_native_index_add_",
+                    globals={
+                        "input": input,
+                        "dim": dim,
+                        "index": index,
+                        "source": source,
+                    },
                 )
                 m0 = t0.blocked_autorange()
 
@@ -125,21 +147,23 @@ for sparsity in sparsities:
 
                 input_dims_str = str(len(tshape))
                 sort_dim_str = str(dim)
-                idx_reduce_factor_str = str(idx_reduce_factor)
+                # idx_reduce_factor_str = str(reduce_f)
 
-                params_str = (
-                    input_dims_str + "; " + sort_dim_str + "; " + idx_reduce_factor_str
-                )
+                params_str = input_dims_str + "; " + sort_dim_str
 
                 formatted_input_dims = str(tshape)
+
+                sparsity_str = str(sparsity_self) + " ; " + str(sparsity_source)
 
                 # output_value = (
                 #     bm_val if not native_exists else combine_vals(bm_val, bm_val_native)
                 # )
 
-                data.append([params_str, formatted_input_dims, sparsity, bm_val])
+                data.append([params_str, formatted_input_dims, sparsity_str, bm_val])
 
                 del input
+                del index
+                del source
 
                 # if native_exists:
                 #     del t1
@@ -154,9 +178,9 @@ for sparsity in sparsities:
 
 df = pd.DataFrame(data)
 df.columns = [
-    "Input dims, index dim, reduce factor (RF)",
+    "Input and source dims, index dim",
     "Input size (>95% mem util)*",
-    "Sparsity",
+    "Sparsity (input, source)",
     "GPU clock time",
 ]
-df.to_csv(f"data/{op_name}")
+df.to_csv(f"data/{op_name}.csv")

@@ -1,0 +1,59 @@
+Native Pytorch operations:
+
+    Sparse operations:
+
+    1. torch.Tensor.coalesce
+    2. torch.Tensor.transpose (benchmarked with COO sparse matrices)
+    3. torch.smm
+    4. torch.sparse.mm 
+
+    Scatter operations:
+
+    1. torch.Tensor.scatter_ (native pytorch supports 'add' and 'multiply' reduction ops but 
+    we are planning to test 'min', 'max', and 'mean' using the pytorch-scatter package. 
+    If needed, I can provide a native pytorch of these operations)
+
+    Spline conv support ops:
+    1. torch.ops.torch_spline_conv.spline_weighting
+    2. torch.ops.torch_spline_conv.spline_basis
+
+Other operations:
+
+We will also be benchmarking operations created specifically for pytorch geometric. 
+These include ops in the torch-scatter, torch-sparse, torch-spline-conv, and torch-cluster 
+packages. The following ops do not seem to have direct native pytorch equivalents but 
+we can provide native implementations, or point to pytorch geometric source code with such 
+implementations. Please note that ops with equivalent native torch implementations are omitted
+here as they are instead included above.
+
+    torch-spline-conv:
+    
+    1. torch_spline_conv.spline_conv 
+
+
+    torch-cluster:
+
+    1. torch_cluster.graclus_cluster
+    2. torch_cluster.grid_cluster
+    3. torch_cluster.fps
+    4. torch_cluster.knn_graph
+    5. torch_cluster.radius_graph
+    6. torch_cluster.nearest
+    7. torch_cluster.random_walk
+
+    torch-scatter:
+
+    1. torch_scatter.segment_coo
+    2. torch_scatter.segment_csr
+    3. torch_scatter.scatter_std
+    4. torch_scatter.scatter_logsumexp
+    5. torch_scatter.scatter_softmax
+    6. torch_scatter.scatter_log_softmax
+
+    torch-sparse:
+
+    1. torch_sparse.scatter_max
+    2. torch_sparse.scatter_min
+    3. torch_sparse.scatter_mean
+
+Please reach out to rhosseini@anl.gov for any questions or comments. 

@@ -11,7 +11,13 @@ TODO:
 
 """
 import torch
-from torch_geometric.nn import global_mean_pool, AttentiveFP, GraphUNet, GATv2Conv
+from torch_geometric.nn import (
+    global_mean_pool,
+    AttentiveFP,
+    GraphUNet,
+    GATv2Conv,
+    PNAConv,
+)
 
 
 """
@@ -22,6 +28,57 @@ Each model impl includes single mean pooling with a single lienar layer (where n
 in order to avoid obstucting GNN kernel ops
 
 """
+
+
+"""
+PNA
+"""
+
+
+class PNAREG(torch.nn.Module):
+    def __init__(
+        self,
+        input_dim,
+        hidden_dim,
+        dropout,
+        num_conv_layers,
+        num_out_channels,
+    ):
+
+        super(PNAREG, self).__init__()
+
+        # call attentive model
+        self.pna = PNAConv(
+            in_channels=input_dim,
+            out_channels=num_out_channels,
+            num_layers=num_conv_layers,
+            dropout=dropout,
+        )
+        # fully connected layers
+        self.post_mp = torch.nn.Sequential(
+            torch.nn.Linear(num_out_channels, 1),
+        )
+
+    def forward(self, data):
+        x, edge_index, batch = (
+            data.x,
+            data.edge_index,
+            data.batch,
+        )
+
+        # call model
+        x = self.pna(x, edge_index, batch)
+
+        # pooling
+        x = global_mean_pool(x, batch)
+
+        # MLP
+        x = self.post_mp(x)
+
+        return x
+
+    def loss(self, pred, label):
+        return torch.nn.functional.mse_loss(pred, label)
 
 
 """

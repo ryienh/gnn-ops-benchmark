@@ -1,0 +1,32 @@
+{
+    "models": [
+        {
+            "name": "PNA",
+            "batch_size": 64,
+            "hidden_dim": 64,
+            "num_conv_layers": 3,
+            "num_out_channels": 16,
+            "dropout": 0.5
+        }
+    ],
+    "datasets": [
+        {
+            "name": "FakeDataset",
+            "num_graphs": 20000,
+            "avg_num_nodes": 1000,
+            "avg_degree": 10,
+            "num_node_features": 4,
+            "edge_dim": 0,
+            "num_classes": 2,
+            "task": "auto",
+            "is_undirected": 1
+        }
+    ],
+    "profiler": {
+        "wait": 1,
+        "warmup": 1,
+        "active": 1,
+        "repeat": 1
+    },
+    "verbose": 1
+}
