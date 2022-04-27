@@ -56,9 +56,9 @@ op_name = "native_addmm"
 # length_ = int(40000 * 1.6)
 # length__ = int(40000 * 1.2)
 # length___ = int(40000 * 1.6)
-length_ = int(4)
-length__ = int(4)
-length___ = int(4)
+length_ = int(8192)
+length__ = int(8192)
+length___ = int(8192)
 # reduce_f_ = [1, 2, 4, 8]
 # idx_dims = src_dims
 sparsities = [0, 0.5, 0.9, 0.99]
@@ -134,7 +134,7 @@ for sparsity_input in sparsities:
                     matB, p=sparsity_B, training=True, inplace=False
                 )
 
-                matB = matB.to_sparse()
+                # matB = matB.to_sparse()
 
                 # begin benchmark logic
                 t0 = benchmark.Timer(
@@ -183,4 +183,4 @@ df.columns = [
     "Sparsities (input, matA, matB)",
     "GPU clock time",
 ]
-df.to_csv(f"new_data/{op_name}.csv")
+df.to_csv(f"data_sn_shapes/{op_name}.csv")

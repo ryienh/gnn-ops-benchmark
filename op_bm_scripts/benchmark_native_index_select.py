@@ -40,16 +40,16 @@ def op_native_index_select(input, dim, index):
 # scatter_mean required 0.82 reduction factor
 op_name = "native_index_select"
 # native_exists = True
-length_ = int(1600384000 * 1.6)
-length__ = int(40000 * 1.65)
-length___ = int(2000 * 0.82)
+# length_ = int(1600384000 * 1.6)
+length__ = int(2048)
+length___ = int(512)
 # reduce_f_ = [1, 2, 4, 8]
 # idx_dims = src_dims
 sparsities = [0, 0.5, 0.9, 0.99]
 
 
 tshapes = [
-    (length_,),
+    # (length_,),
     (length__, length__),
     (length___, length___, length___),
 ]
@@ -139,4 +139,4 @@ df.columns = [
     "Sparsity",
     "GPU clock time",
 ]
-df.to_csv(f"new_data/{op_name}.csv")
+df.to_csv(f"data_sn_shapes/{op_name}.csv")

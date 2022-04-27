@@ -49,13 +49,30 @@ length__ = int(40000 * 1.2)
 length___ = int(2000 * 0.6)
 # reduce_f_ = [1, 2, 4, 8]
 # idx_dims = src_dims
-sparsities = [0, 0.5, 0.9, 0.99]
+# sparsities = [0, 0.5, 0.9, 0.99]
+sparsities = [0]
 
 
 tshapes = [
     (length_,),
     (length__, length__),
     (length___, length___, length___),
+]
+
+
+tshapes = [
+    # (1920460800,),
+    # (3840921600,),
+    # (7681843200,),
+    # (15363686400,),
+    # (30727372800,),
+    # (122909491200),
+    (44000, 44000),
+    (44000, 88000),
+    # (44000, 176000),
+    # (88000, 176000),
+    # (88000, 352000),
+    # (1400, 1400, 1400),
 ]
 
 # create data (list of dicts) for csv creation
@@ -139,4 +156,4 @@ df.columns = [
     "Sparsity",
     "GPU clock time",
 ]
-df.to_csv(f"new_data/{op_name}.csv")
+df.to_csv(f"data_sn_shapes/{op_name}.csv")

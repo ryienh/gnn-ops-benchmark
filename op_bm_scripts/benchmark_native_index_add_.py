@@ -47,16 +47,16 @@ op_name = "native_index_add_"
 # native_exists = True
 length_ = int(1600384000 * 1.2)
 length__ = int(40000 * 1.1)
-length___ = int(2000 * 0.7)
+length___ = int(2048)
 # reduce_f_ = [1, 2, 4, 8]
 # idx_dims = src_dims
 sparsities = [0, 0.5, 0.9, 0.99]
 
 
 tshapes = [
-    (length_,),
+    # (length_,),
     (length__, length__),
-    (length___, length___, length___),
+    # (length___, length___, length___),
 ]
 
 # create data (list of dicts) for csv creation
@@ -73,7 +73,8 @@ counter = 0
 # define inputs over hyperparams
 for sparsity in sparsities:
     for tshape in tshapes:
-        for dim in [0, 1, 2]:
+        # for dim in [0, 1, 2]:
+        for dim in [1]:
 
             torch.cuda.empty_cache()
 
@@ -143,4 +144,4 @@ df.columns = [
     "Sparsity",
     "GPU clock time",
 ]
-df.to_csv(f"new_data/{op_name}.csv")
+df.to_csv(f"data_sn_shapes/{op_name}.csv")

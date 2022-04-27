@@ -129,7 +129,6 @@ dmypy.json
 .pyre/
 
 # data/logs, wandb and conda settings
-data/*
 log/*
 wandb/*
 mycondaenv/*
