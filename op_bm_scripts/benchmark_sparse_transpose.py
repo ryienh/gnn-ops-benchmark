@@ -1,12 +1,14 @@
 # Scatter ops
-
 import torch
 import torch.utils.benchmark as benchmark
 import pandas as pd
 
-from pdb import set_trace as bp
-
 from torch_sparse import transpose
+
+
+from graph_benchmark.benchmark.OpBenchmark import make_sparse
+
+import matplotlib.pyplot as plt
 
 """
 Begin scatter ops
@@ -51,8 +53,10 @@ def op_native_transpose(matA):
 setup_seed(42)
 op_name = "sparse_transpose"
 # native_exists = True
-length_ = int(50000 * 0.4)
-length__ = int(5000000 * 20)
+# length_ = int(50000 * 0.4)
+length_ = 100
+# length__ = int(5000000 * 20)
+length__ = 10
 # reduce_f_ = [1, 2, 4, 8]
 # idx_dims = src_dims
 sparsities = [0.5, 0.9, 0.99]
@@ -60,7 +64,7 @@ sparsities = [0.5, 0.9, 0.99]
 
 tshapes = [
     (length_, length_),
-    (length__, 1),
+    # (length__, 1),
 ]
 
 # create data (list of dicts) for csv creation
@@ -96,9 +100,18 @@ for sparsity in sparsities:
 
         # randomly drop values to create sparsity
 
-        matA = torch.nn.functional.dropout(
-            matA, p=sparsity, training=True, inplace=False
-        )
+        matA = make_sparse(matA, sparsity)
+        print("DEBUG")
+        print(matA.shape)
+        sparsity = (torch.numel(matA) - torch.count_nonzero(matA)) / torch.numel(matA)
+        print(f"Sparsity is {sparsity}")
+        plt.imshow(matA.to("cpu").numpy())
+        plt.colorbar()
+        plt.savefig(f"debug_figs/{sparsity}.png")
+        # print(matA)
+        # matA = torch.nn.functional.dropout(
+        #     matA, p=sparsity, training=True, inplace=False
+        # )
 
         torch.cuda.empty_cache()
 
@@ -128,11 +141,15 @@ for sparsity in sparsities:
                 "n": n,
             },
         )
-        m0 = t0.blocked_autorange()
 
-        bm_val = m0.median
+        # blocked autorange
+        # m0 = t0.blocked_autorange()
+        # new way
+        bm_val = t0.timeit(100).median
 
-        del m0
+        # bm_val = t0.median
+
+        # del m0
         del t0
 
         torch.cuda.empty_cache()

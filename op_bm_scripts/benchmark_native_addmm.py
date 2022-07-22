@@ -183,4 +183,4 @@ df.columns = [
     "Sparsities (input, matA, matB)",
     "GPU clock time",
 ]
-df.to_csv(f"data_sn_shapes/{op_name}.csv")
+# df.to_csv(f"data_sn_shapes/{op_name}.csv")

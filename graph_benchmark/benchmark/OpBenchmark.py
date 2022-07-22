@@ -2,8 +2,36 @@
 Stuff here
 """
 import torch.utils.benchmark as benchmark
+import torch
 
 from itertools import permutations
+
+
+# def make_sparse(input, sparsity):
+
+#     # seed
+#     torch.manual_seed(100)
+
+#     k_th_quant = torch.topk(input, int(sparsity * input.shape[-1]), largest=False)[0][
+#         :, -1:
+#     ]
+#     mask = input <= k_th_quant
+#     input[mask] = 0
+#     return input
+
+
+def make_sparse(input, sparsity):
+    print(f"Input shape: {input.shape}")
+    k = round(sparsity * input.shape[-1])
+    k_th_quant = torch.topk(input, k, largest=False)[0][:, -1:]
+    bool_tensor = input <= k_th_quant
+    input[bool_tensor] = 0
+    return input
+
+
+# def make_sparse(input, sparsity):
+#     binomial = torch.distributions.binomial.Binomial(probs=1 - sparsity)
+#     return input * binomial.sample(input.size()) * (1.0 / (1 - sparsity))
 
 
 class OpBenchmark:
