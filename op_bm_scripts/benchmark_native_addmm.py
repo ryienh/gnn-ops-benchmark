@@ -1,25 +1,15 @@
-# Scatter ops
-import sys
 import math
 import numpy as np
 import pandas as pd
 import torch
 import torch.utils.benchmark as benchmark
-from torch.profiler import profile, record_function, ProfilerActivity
 
-from pdb import set_trace as bp
-
-
-"""
-Begin scatter ops
-"""
 import random
-import numpy
 
 
 def setup_seed(seed):
     random.seed(seed)
-    numpy.random.seed(seed)
+    np.random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
@@ -37,21 +27,19 @@ def combine_vals(bm_val, bm_val_native):
 
 
 def op_native_addmm(input, mat1, mat2):
-    """Computes max scatter operation"""
+    """Computes addmm operation"""
     out = torch.addmm(input=input, mat1=mat1, mat2=mat2)
     return out
 
 
 # Configurable hyperparams here
 # dimensions: src size, idx size, src sparsity
-# scatter_mean required 0.82 reduction factor
 setup_seed(42)
 op_name = "native_addmm"
 lengths_ = np.linspace(2_500_000, 66_666_667, num=100).tolist()
 lengths_ = [int(math.sqrt(x)) for x in lengths_]
-# length__ = int(math.sqrt(3495200))
-# length___ = int(math.sqrt(3495200))
 sparsities = [0]
+num_bm_runs = 100
 
 
 tshapes = [
@@ -61,8 +49,6 @@ tshapes = [
         (length_, length_),
     ]
     for length_ in lengths_
-    # [(length_, length_), (length_, 1), (1, length_)],
-    # [(length___, 1), (length___, length___), (length___, 1)],
 ]
 
 # create data (list of dicts) for csv creation
@@ -75,12 +61,6 @@ if device == "cpu":
 
 torch.cuda.empty_cache()
 counter = 0
-# bp()
-# define inputs over hyperparams
-# with profile(
-#     activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA], record_shapes=True
-# ) as prof:
-#     with record_function("bm"):
 for sparsity_input in sparsities:
     for sparsity_A in sparsities:
         for sparsity_B in sparsities:
@@ -137,7 +117,9 @@ for sparsity_input in sparsities:
                     globals={"input": input, "matA": matA, "matB": matB},
                 )
 
-                bm_val = t0.timeit(100).median
+                bm = t0.timeit(num_bm_runs)
+                bm_val = bm.median
+                bm_iqr = bm.iqr
 
                 del t0
 
@@ -160,7 +142,7 @@ for sparsity_input in sparsities:
                         params_str,
                         formatted_input_dims,
                         formatted_sparsities,
-                        bm_val,
+                        str(bm_val) + "(" + str(bm_iqr) + ")",
                     ]
                 )
 
@@ -172,13 +154,11 @@ for sparsity_input in sparsities:
                 counter += 1
 
 
-# print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10))
-
 df = pd.DataFrame(data)
 df.columns = [
     "Input dims",
-    "Input size (>95% mem util)*",
+    "Input size",
     "Sparsities (input, matA, matB)",
-    "GPU clock time",
+    "GPU clock time (IQR)",
 ]
 df.to_csv(f"mem_prof_data/{op_name}.csv")
