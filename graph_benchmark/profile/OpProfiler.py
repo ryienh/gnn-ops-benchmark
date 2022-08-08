@@ -97,9 +97,6 @@ class OpProfiler:
         elif self.model_names[idx] == "GATv2":
             # unpack config args
             try:
-                import pdb
-
-                pdb.set_trace()
                 hidden_dim = self.models[idx]["hidden_dim"]
                 num_layers = self.models[idx]["num_layers"]
                 heads = self.models[idx]["heads"]

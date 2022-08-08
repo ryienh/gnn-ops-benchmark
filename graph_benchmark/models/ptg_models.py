@@ -187,7 +187,7 @@ class GraphUNetREG(torch.nn.Module):
         x = self.graph_unet(x, edge_index, batch)
 
         # # pooling
-        # x = global_mean_pool(x, batch)
+        x = global_mean_pool(x, batch)
 
         # MLP
         x = self.post_mp(x)
