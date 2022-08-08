@@ -1,8 +1,11 @@
 # Scatter ops
-
+import sys
+import math
+import numpy as np
+import pandas as pd
 import torch
 import torch.utils.benchmark as benchmark
-import pandas as pd
+from torch.profiler import profile, record_function, ProfilerActivity
 
 from pdb import set_trace as bp
 
@@ -39,39 +42,27 @@ def op_native_addmm(input, mat1, mat2):
     return out
 
 
-# def op_scatter_add_native(src, idx):
-#     """Computes max scatter operation"""
-#     temp = torch.zeros_like(src)
-#     temp.scatter_(dim=0, index=idx, src=src, reduce="add")
-#     return temp
-
-
 # Configurable hyperparams here
 # dimensions: src size, idx size, src sparsity
 # scatter_mean required 0.82 reduction factor
 setup_seed(42)
 op_name = "native_addmm"
-# native_exists = True
-# FIXME: fix sparse conversion st that full mem capacity can be used
-# length_ = int(40000 * 1.6)
-# length__ = int(40000 * 1.2)
-# length___ = int(40000 * 1.6)
-length_ = int(8192)
-length__ = int(8192)
-length___ = int(8192)
-# reduce_f_ = [1, 2, 4, 8]
-# idx_dims = src_dims
-sparsities = [0, 0.5, 0.9, 0.99]
+lengths_ = np.linspace(2_500_000, 66_666_667, num=100).tolist()
+lengths_ = [int(math.sqrt(x)) for x in lengths_]
+# length__ = int(math.sqrt(3495200))
+# length___ = int(math.sqrt(3495200))
+sparsities = [0]
 
 
 tshapes = [
     [
-        (length__, length__),
-        (length__, length__),
-        (length__, length__),
-    ],
-    [(length_, length_), (length_, 1), (1, length_)],
-    [(length___, 1), (length___, length___), (length___, 1)],
+        (length_, length_),
+        (length_, length_),
+        (length_, length_),
+    ]
+    for length_ in lengths_
+    # [(length_, length_), (length_, 1), (1, length_)],
+    # [(length___, 1), (length___, length___), (length___, 1)],
 ]
 
 # create data (list of dicts) for csv creation
@@ -86,15 +77,16 @@ torch.cuda.empty_cache()
 counter = 0
 # bp()
 # define inputs over hyperparams
+# with profile(
+#     activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA], record_shapes=True
+# ) as prof:
+#     with record_function("bm"):
 for sparsity_input in sparsities:
     for sparsity_A in sparsities:
         for sparsity_B in sparsities:
             for tshape in tshapes:
 
                 torch.cuda.empty_cache()
-
-                # if dim >= len(tshape):
-                #     continue
 
                 print(
                     f"DEBUG: Current input has dims {tshape[0]}, {tshape[1]}, {tshape[2]}"
@@ -103,22 +95,26 @@ for sparsity_input in sparsities:
                 input = torch.rand(
                     size=tshape[0],
                     device="cuda",
-                    dtype=torch.float32,
+                    dtype=torch.float16,
                     requires_grad=False,
                 )
 
                 matA = torch.rand(
                     size=tshape[1],
                     device="cuda",
-                    dtype=torch.float32,
+                    dtype=torch.float16,
                     requires_grad=False,
                 )
 
                 matB = torch.rand(
                     size=tshape[2],
                     device="cuda",
-                    dtype=torch.float32,
+                    dtype=torch.float16,
                     requires_grad=False,
+                )
+
+                print(
+                    f"SIZE TOTAL: {(input.element_size()*input.numel() + matA.element_size()*matA.numel() + matB.element_size()*matB.numel())/1000000} mb"
                 )
 
                 # randomly drop values to create sparsity
@@ -134,22 +130,16 @@ for sparsity_input in sparsities:
                     matB, p=sparsity_B, training=True, inplace=False
                 )
 
-                # matB = matB.to_sparse()
-
                 # begin benchmark logic
                 t0 = benchmark.Timer(
                     stmt="op_native_addmm(input, matA, matB)",
                     setup="from __main__ import op_native_addmm",
                     globals={"input": input, "matA": matA, "matB": matB},
                 )
-                m0 = t0.blocked_autorange()
 
-                bm_val = m0.median
+                bm_val = t0.timeit(100).median
 
-                del m0
                 del t0
-
-                print_util_info()
 
                 input_dims_str = str(len(tshape))
 
@@ -166,7 +156,12 @@ for sparsity_input in sparsities:
                 )
 
                 data.append(
-                    [params_str, formatted_input_dims, formatted_sparsities, bm_val]
+                    [
+                        params_str,
+                        formatted_input_dims,
+                        formatted_sparsities,
+                        bm_val,
+                    ]
                 )
 
                 del input
@@ -176,6 +171,9 @@ for sparsity_input in sparsities:
                 print(f"done with {counter}")
                 counter += 1
 
+
+# print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10))
+
 df = pd.DataFrame(data)
 df.columns = [
     "Input dims",
@@ -183,4 +181,4 @@ df.columns = [
     "Sparsities (input, matA, matB)",
     "GPU clock time",
 ]
-# df.to_csv(f"data_sn_shapes/{op_name}.csv")
+df.to_csv(f"mem_prof_data/{op_name}.csv")

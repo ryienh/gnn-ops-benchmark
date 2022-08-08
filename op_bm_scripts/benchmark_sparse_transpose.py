@@ -1,10 +1,14 @@
 # Scatter ops
+import sys
+import math
+import numpy as np
 import torch
 import torch.utils.benchmark as benchmark
 import pandas as pd
 
 from torch_sparse import transpose
 
+sys.path.insert(0, "/home/rhosseini/gnn-kernel-benchmark")  # FIXME
 
 from graph_benchmark.benchmark.OpBenchmark import make_sparse
 
@@ -52,20 +56,24 @@ def op_native_transpose(matA):
 # dimensions: src size, idx size, src sparsity
 setup_seed(42)
 op_name = "sparse_transpose"
-# native_exists = True
-# length_ = int(50000 * 0.4)
-length_ = 100
-# length__ = int(5000000 * 20)
-length__ = 10
-# reduce_f_ = [1, 2, 4, 8]
-# idx_dims = src_dims
-sparsities = [0.5, 0.9, 0.99]
 
 
-tshapes = [
-    (length_, length_),
-    # (length__, 1),
-]
+# length_ = 100
+
+# length__ = 10
+
+# sparsities = [0.5, 0.9, 0.99]
+
+
+# tshapes = [
+#     (length_, length_),
+#     # (length__, 1),
+# ]
+
+lengths_ = np.linspace(4_000_000, 20_000_000, num=100).tolist()
+lengths_ = [int(math.sqrt(x)) for x in lengths_]
+tshapes = [(length_, length_) for length_ in lengths_]
+sparsities = [0.9]
 
 # create data (list of dicts) for csv creation
 data = []
@@ -101,13 +109,13 @@ for sparsity in sparsities:
         # randomly drop values to create sparsity
 
         matA = make_sparse(matA, sparsity)
-        print("DEBUG")
-        print(matA.shape)
+        # print("DEBUG")
+        # print(matA.shape)
         sparsity = (torch.numel(matA) - torch.count_nonzero(matA)) / torch.numel(matA)
         print(f"Sparsity is {sparsity}")
-        plt.imshow(matA.to("cpu").numpy())
-        plt.colorbar()
-        plt.savefig(f"debug_figs/{sparsity}.png")
+        # plt.imshow(matA.to("cpu").numpy())
+        # plt.colorbar()
+        # plt.savefig(f"debug_figs/{sparsity}.png")
         # print(matA)
         # matA = torch.nn.functional.dropout(
         #     matA, p=sparsity, training=True, inplace=False
@@ -142,10 +150,12 @@ for sparsity in sparsities:
             },
         )
 
+        print(f"SIZE TOTAL: {(matA.element_size()*matA.numel())/1000000} mb")
+
         # blocked autorange
         # m0 = t0.blocked_autorange()
         # new way
-        bm_val = t0.timeit(100).median
+        bm_val = t0.timeit(2).median
 
         # bm_val = t0.median
 
@@ -162,11 +172,9 @@ for sparsity in sparsities:
                 "matA": matA,
             },
         )
-        m1 = t1.blocked_autorange()
 
-        bm_native = m1.median
+        bm_native = t1.timeit(2).median
 
-        del m1
         del t1
 
         print_util_info()
@@ -197,4 +205,4 @@ df.columns = [
     "Sparsities (input, matA, matB)",
     "GPU clock time",
 ]
-df.to_csv(f"new_data/{op_name}.csv")
+df.to_csv(f"mem_prof_data/{op_name}.csv")

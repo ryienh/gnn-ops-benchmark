@@ -1,93 +1,73 @@
-# Scatter ops
+"""
+Profiles native_sort op
+"""
+import sys
+import os
 
 import torch
 import torch.utils.benchmark as benchmark
-import pandas as pd
 
-import matplotlib.pyplot as plt
+sys.path.insert(0, "/home/rhosseini/gnn-kernel-benchmark")  # FIXME
 
-from pdb import set_trace as bp
+from graph_benchmark.benchmark.util import (
+    setup_seed,
+    print_util_info,
+    setup_cuda,
+    empty_cache,
+    print_sparsity_info,
+    print_bm_stats,
+    print_input_dims,
+)
 
-import random
-import numpy
-
-
-"""
-Begin scatter ops
-"""
-
-
-def setup_seed(seed):
-    random.seed(seed)
-    numpy.random.seed(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
-    torch.backends.cudnn.deterministic = True
+from graph_benchmark.benchmark.DataWriter import DataWriter
 
 
-def print_util_info():
-    print("GPU INFO:")
-    print("\t Memory allocated: ", (torch.cuda.memory_allocated() / 4e10))
-    print("\t Memory reserved: ", (torch.cuda.memory_reserved() / 4e10))
+# Begin bm script body
 
-
-def combine_vals(bm_val, bm_val_native):
-    return str(bm_val) + " (" + str(bm_val_native) + ")"
-
-
+# Define op for benchmarking
 def op_native_sort(input, dim, stable):
-    """Computes max scatter operation"""
     out, idx = torch.sort(input=input, dim=dim, stable=stable)
     return out, idx
 
 
-# def op_scatter_add_native(src, idx):
-#     """Computes max scatter operation"""
-#     temp = torch.zeros_like(src)
-#     temp.scatter_(dim=0, index=idx, src=src, reduce="add")
-#     return temp
-
-
-# Configurable hyperparams here
-# dimensions: src size, idx size, src sparsity
-# scatter_mean required 0.82 reduction factor
 setup_seed(42)
 
+# Define parameters to sweep over
 op_name = "native_sort"
-# native_exists = True
-length_ = int(1600384000 * 0.6)
-length__ = int(40000 * 0.705)
-length___ = int(2000 * 0.45)
-# reduce_f_ = [1, 2, 4, 8]
-# idx_dims = src_dims
+length_ = int(1600384000 * 0.5)
+length__ = int(40000 * 0.5)
+length___ = int(2000 * 0.4)
 sparsities = [0, 0.5, 0.9, 0.99]
-
-
 tshapes = [
     (length_,),
     (length__, length__),
     (length___, length___, length___),
 ]
 
-# create data (list of dicts) for csv creation
-data = []
+# create data (list of dicts) for csv creation, set up cuda, empty cache
+dw = DataWriter(op_name=op_name, param_names="Input dims, sort dim, stable")
+device = setup_cuda()
+empty_cache()
 
-# cuda stuff
-device = "cuda" if torch.cuda.is_available() else "cpu"
-if device == "cpu":
-    raise Exception("Benchmarking only supported for CUDA")
-
-torch.cuda.empty_cache()
 counter = 0
-# bp()
+
 # define inputs over hyperparams
 for sparsity in sparsities:
+
+    # torch.cuda.nvtx.range_push(f"sparsity: {sparsity}")
+    # with torch.autograd.profiler.emit_nvtx():
+
     for tshape in tshapes:
+
+        # torch.cuda.nvtx.range_push(f"tshape: {tshape}")
+
         for dim in [0, 1, 2]:
+
+            # torch.cuda.nvtx.range_push(f"dim: {dim}")
+
             for stable in [True, False]:
 
-                torch.cuda.empty_cache()
+                empty_cache()
 
                 # print_util_info()
                 # bp()
@@ -95,59 +75,66 @@ for sparsity in sparsities:
                 if dim >= len(tshape):
                     continue
 
-                print(f"DEBUG: Current input has dims {len(tshape)}")
-
-                input = torch.rand(
-                    size=tshape, device="cuda", dtype=torch.float32, requires_grad=False
+                torch.cuda.nvtx.range_push(
+                    f"sparsity: {sparsity}, tshape: {tshape}, dim: {dim}, stable: {stable}"
                 )
 
-                # randomly drop values to create sparsity
-                input = torch.nn.functional.dropout(
-                    input, p=sparsity, training=True, inplace=False
-                )
+                with torch.autograd.profiler.emit_nvtx():
 
-                print(
-                    f"for sparsity: {sparsity}, percent non-zero is: {torch.count_nonzero(input) / input.numel()}"
-                )
+                    # sanity check
+                    print_input_dims(tshape)
 
-                # begin benchmark logic
-                t0 = benchmark.Timer(
-                    stmt="op_native_sort(input, dim, stable)",
-                    setup="from __main__ import op_native_sort",
-                    globals={"input": input, "dim": dim, "stable": stable},
-                )
-                m0 = t0.blocked_autorange(min_run_time=1)
+                    input = torch.rand(
+                        size=tshape,
+                        device="cuda",
+                        dtype=torch.float32,
+                        requires_grad=False,
+                    )
 
-                bm_val = m0.median
-                print(
-                    f"debug blocked autorange: median is {m0.median}, iqr is {m0.iqr}, count is {len(m0.times)}"
-                )
+                    # randomly drop values to create sparsity
+                    input = torch.nn.functional.dropout(
+                        input, p=sparsity, training=True, inplace=False
+                    )
 
-                del m0
-                del t0
+                    print_sparsity_info(sparsity=sparsity, input=input)
 
-                print_util_info()
+                    # begin benchmark logic
+                    t0 = benchmark.Timer(
+                        stmt="op_native_sort(input, dim, stable)",
+                        setup="from __main__ import op_native_sort",
+                        globals={
+                            "input": input,
+                            "dim": dim,
+                            "stable": stable,
+                        },
+                    )
+                    m0 = t0.blocked_autorange(min_run_time=1)
 
-                input_dims_str = str(len(tshape))
-                sort_dim_str = str(dim)
-                stable_str = str(stable)
+                    bm_val = m0.median
 
-                params_str = input_dims_str + "; " + sort_dim_str + "; " + stable_str
+                    print_bm_stats(m0)
 
-                formatted_input_dims = str(tshape)
+                    del m0
+                    del t0
 
-                data.append([params_str, formatted_input_dims, sparsity, bm_val])
+                    print_util_info()
 
-                del input
+                    # convert inputs to string
+                    input_dims_str = str(len(tshape))
+                    sort_dim_str = str(dim)
+                    stable_str = str(stable)
 
-                print(f"done with {counter}")
-                counter += 1
+                    dw.add_entry(
+                        params_lst=[input_dims_str, sort_dim_str, stable_str],
+                        tshape=tshape,
+                        sparsity=sparsity,
+                        bm_val=bm_val,
+                    )
 
-df = pd.DataFrame(data)
-df.columns = [
-    "Input dims, sort dim, stable",
-    "Input size (>95% mem util)*",
-    "Sparsity",
-    "GPU clock time",
-]
-df.to_csv(f"new_data/{op_name}.csv")
+                    del input
+
+                    print(f"done with {counter}")
+                    counter += 1
+
+
+dw.write_data(path=os.path.join("./", "datatest"))

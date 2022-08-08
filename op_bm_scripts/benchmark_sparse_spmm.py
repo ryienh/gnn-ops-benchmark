@@ -1,5 +1,7 @@
 # Scatter ops
-
+import sys
+import math
+import numpy as np
 import torch
 import torch.utils.benchmark as benchmark
 import pandas as pd
@@ -50,22 +52,27 @@ def op_native_smm(matA, matB):
 setup_seed(42)
 op_name = "sparse_spmm"
 # native_exists = True
-length_ = int(4000 * 8 * 2.2)
-length__ = int(4000 * 0.25 * 1.7)
-length___ = int(4000 * 6.5 * 1.15)
-# reduce_f_ = [1, 2, 4, 8]
-# idx_dims = src_dims
-sparsities = [0.5, 0.9, 0.99]
+# length_ = int(4000 * 8 * 2.2)
+# length__ = int(4000 * 0.25 * 1.7)
+# length___ = int(4000 * 6.5 * 1.15)
+# sparsities = [0.5, 0.9, 0.99]
+
+lengths_ = np.linspace(2_000_000, 10_000_000, num=100).tolist()
+lengths_ = [int(math.sqrt(x)) for x in lengths_]
+sparsities = [0.9]
 
 
-tshapes = [
-    [
-        (length__, length__),
-        (length__, length__),
-    ],
-    [(length_, 1), (1, length_)],
-    [(length___, length___), (length___, 1)],
-]
+tshapes = [[(length_, length_), (length_, length_)] for length_ in lengths_]
+
+
+# tshapes = [
+#     [
+#         (length__, length__),
+#         (length__, length__),
+#     ],
+#     [(length_, 1), (1, length_)],
+#     [(length___, length___), (length___, 1)],
+# ]
 
 # create data (list of dicts) for csv creation
 data = []
@@ -131,6 +138,7 @@ for sparsity_A in sparsities:
 
             indexA = matA.indices()
             valueA = matA.values()
+
             torch.cuda.empty_cache()
 
             # begin benchmark logic
@@ -145,11 +153,13 @@ for sparsity_A in sparsities:
                     "matB": matB,
                 },
             )
-            m0 = t0.blocked_autorange()
 
-            bm_val = m0.median
+            print(
+                f"SIZE TOTAL: {(matA.element_size()*matA.numel() + matB.element_size()*matB.numel())/1000000} mb"
+            )
 
-            del m0
+            bm_val = t0.timeit(2).median
+
             del t0
 
             torch.cuda.empty_cache()
@@ -163,11 +173,9 @@ for sparsity_A in sparsities:
                     "matB": matB,
                 },
             )
-            m1 = t1.blocked_autorange()
 
-            bm_native = m1.median
+            bm_native = t1.timeit(2).median
 
-            del m1
             del t1
 
             print_util_info()
@@ -199,4 +207,4 @@ df.columns = [
     "Sparsities (input, matA, matB)",
     "GPU clock time",
 ]
-df.to_csv(f"new_data/{op_name}.csv")
+df.to_csv(f"mem_prof_data/{op_name}.csv")

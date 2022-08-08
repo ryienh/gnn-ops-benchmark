@@ -1,17 +1,18 @@
 # Scatter ops
 
+import math
+import numpy as np
 import torch
 from torch_scatter import (
     scatter_add,
 )
 import torch.utils.benchmark as benchmark
+from torch.profiler import profile, record_function, ProfilerActivity
 import pandas as pd
 
-# from graph_benchmark.datasets.fakeDatasets import FakeDataset
 
 from pdb import set_trace as bp
 
-# wandb.init(project="scatter-op-benchmark")
 
 """
 Begin scatter ops
@@ -57,15 +58,20 @@ def op_native_scatter_add_(src, idx):
 setup_seed(42)
 op_name = "scatter_add"
 native_exists = True
-length_ = 1600384000 * 1.5
-length__ = 40000 * 1.2
+# length_ = 512
+# length__ = 256
 reduce_f_ = [1, 2, 4, 8]
-sparsities = [0, 0.5, 0.9, 0.99]
-tshapes = [
-    (int(length_),),
-    (int(length__), int(length__)),
-]
+# sparsities = [0, 0.5, 0.9, 0.99]
+# tshapes = [
+#     (int(length_),),
+#     (int(length__), int(length__)),
+# ]
+lengths_ = np.linspace(1_500_000, 100_000_000, num=100).tolist()
+lengths_ = [int(math.sqrt(x)) for x in lengths_]
+sparsities = [0]
 
+
+tshapes = [(length_, length_) for length_ in lengths_]
 
 # create data (list of dicts) for csv creation
 data = []
@@ -79,97 +85,101 @@ torch.cuda.empty_cache()
 counter = 0
 
 # define inputs over hyperparams
-for reduce_f in reduce_f_:
-    for sparsity in sparsities:
-        for src_dims in tshapes:
+with profile(
+    activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA], record_shapes=True
+) as prof:
+    with record_function("bm"):
+        for reduce_f in reduce_f_:
+            for sparsity in sparsities:
+                for src_dims in tshapes:
 
-            torch.cuda.empty_cache()
+                    torch.cuda.empty_cache()
 
-            # print_util_info()
-            # bp()
+                    # print_util_info()
+                    # bp()
 
-            idx_dims = src_dims
+                    idx_dims = src_dims
 
-            max_idx = int(src_dims[0] / reduce_f)
+                    max_idx = int(src_dims[0] / reduce_f)
 
-            # print(src_dims[2])
-            src = torch.rand(
-                size=src_dims, device="cuda", dtype=torch.float32, requires_grad=False
-            )
-            idx = torch.randint(
-                high=max_idx,
-                size=idx_dims,
-                device="cuda",
-                dtype=torch.int64,
-                requires_grad=False,
-            )
+                    # print(src_dims[2])
+                    src = torch.rand(
+                        size=src_dims,
+                        device="cuda",
+                        dtype=torch.float16,
+                        requires_grad=False,
+                    )
+                    idx = torch.randint(
+                        high=max_idx,
+                        size=idx_dims,
+                        device="cuda",
+                        dtype=torch.int64,
+                        requires_grad=False,
+                    )
 
-            # randomly drop values to create sparsity
-            src = torch.nn.functional.dropout(
-                src, p=sparsity, training=True, inplace=False
-            )
+                    # randomly drop values to create sparsity
+                    src = torch.nn.functional.dropout(
+                        src, p=sparsity, training=True, inplace=False
+                    )
 
-            # print(
-            #     f"for sparsity: {sparsity}, percent non-zero is: {torch.count_nonzero(src) / src.numel()}"
-            # )
+                    print(
+                        f"SIZE TOTAL: {(src.element_size()*src.numel() + idx.element_size()*idx.numel())/1000000} mb"
+                    )
 
-            # begin benchmark logic
-            t0 = benchmark.Timer(
-                stmt="op_scatter_add(src, idx)",
-                setup="from __main__ import op_scatter_add",
-                globals={"src": src, "idx": idx},
-            )
-            m0 = t0.blocked_autorange()
+                    # print(
+                    #     f"for sparsity: {sparsity}, percent non-zero is: {torch.count_nonzero(src) / src.numel()}"
+                    # )
 
-            bm_val = m0.median
-            bm_iqr = m0.iqr
+                    # begin benchmark logic
+                    t0 = benchmark.Timer(
+                        stmt="op_scatter_add(src, idx)",
+                        setup="from __main__ import op_scatter_add",
+                        globals={"src": src, "idx": idx},
+                    )
 
-            # if len(src_dims) == 1:
-            #     print(f"Sparsity: {torch.count_nonzero(src)/length_}")
-            # else:
-            #     print(f"Sparsity: {torch.count_nonzero(src)/length__**2}")
+                    m = t0.timeit(100)
+                    bm_val = m.median
+                    bm_iqr = m.iqr
 
-            del m0
-            del t0
+                    del t0
+                    del m
 
-            t1 = benchmark.Timer(
-                stmt="op_native_scatter_add_(src, idx)",
-                setup="from __main__ import op_native_scatter_add_",
-                globals={"src": src, "idx": idx},
-            )
+                    t1 = benchmark.Timer(
+                        stmt="op_native_scatter_add_(src, idx)",
+                        setup="from __main__ import op_native_scatter_add_",
+                        globals={"src": src, "idx": idx},
+                    )
 
-            m1 = t1.blocked_autorange()
-            bm_val_native = m1.median
+                    bm_val_native = t1.timeit(100).median
 
-            del t1
-            del m1
+                    del t1
 
-            print_util_info()
+                    print_util_info()
 
-            shape_name = "LS" if len(src_dims) == 1 else "square"
-            params_str = str(reduce_f) + " " + shape_name
-            bm_data = (
-                "%g" % round(bm_val, 3) + " (" + "%g" % round(bm_val_native, 3) + ")"
-            )
+                    shape_name = "LS" if len(src_dims) == 1 else "square"
+                    params_str = str(reduce_f) + " " + shape_name
+                    bm_data = (
+                        "%g" % round(bm_val, 3)
+                        + " ("
+                        + "%g" % round(bm_val_native, 3)
+                        + ")"
+                    )
 
-            # output_value = (
-            #     bm_val if not native_exists else combine_vals(bm_val, bm_val_native)
-            # )
+                    data.append([params_str, str(src_dims), sparsity, bm_data])
 
-            data.append([params_str, str(src_dims), sparsity, bm_data])
+                    del src
+                    del idx
 
-            del src
-            del idx
-            # if native_exists:
-            #     del t1
-            #     del m1
+                    # print_util_info()
 
-            # print_util_info()
+                    # torch.cuda.empty_cache()
 
-            # torch.cuda.empty_cache()
+                    print(f"done with {counter}")
+                    counter += 1
 
-            print(f"done with {counter}")
-            counter += 1
+
+# print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10))
+
 
 df = pd.DataFrame(data)
 df.columns = [
@@ -178,4 +188,4 @@ df.columns = [
     "Sparsity",
     "GPU clock time",
 ]
-df.to_csv(f"new_data/{op_name}.csv")
+df.to_csv(f"mem_prof_data/{op_name}.csv")

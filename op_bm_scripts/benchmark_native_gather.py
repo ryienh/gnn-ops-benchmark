@@ -1,7 +1,10 @@
 # Scatter ops
 
+import math
+import numpy as np
 import torch
 import torch.utils.benchmark as benchmark
+from torch.profiler import profile, record_function, ProfilerActivity
 import pandas as pd
 
 from pdb import set_trace as bp
@@ -44,35 +47,33 @@ def op_native_gather(input, dim, index):
 # scatter_mean required 0.82 reduction factor
 op_name = "native_gather"
 # native_exists = True
-length_ = int(1600384000 * 1.5)
-length__ = int(40000 * 1.2)
-length___ = int(2000 * 0.6)
+# length_ = int(1024)
+# length__ = int(512)
+# length___ = int(256)
 # reduce_f_ = [1, 2, 4, 8]
 # idx_dims = src_dims
 # sparsities = [0, 0.5, 0.9, 0.99]
+# sparsities = [0, 0.9]
+
+
+# tshapes = [
+#     (length_,),
+#     (length__, length__),
+#     (length___, length___, length___),
+# ]
+
+lengths_ = np.linspace(1_500_000, 100_000_000, num=100).tolist()
+lengths_ = [int(math.sqrt(x)) for x in lengths_]
+# length__ = int(math.sqrt(3495200))
+# length___ = int(math.sqrt(3495200))
 sparsities = [0]
 
 
 tshapes = [
-    (length_,),
-    (length__, length__),
-    (length___, length___, length___),
-]
-
-
-tshapes = [
-    # (1920460800,),
-    # (3840921600,),
-    # (7681843200,),
-    # (15363686400,),
-    # (30727372800,),
-    # (122909491200),
-    (44000, 44000),
-    (44000, 88000),
-    # (44000, 176000),
-    # (88000, 176000),
-    # (88000, 352000),
-    # (1400, 1400, 1400),
+    (length_, length_)
+    for length_ in lengths_
+    # [(length_, length_), (length_, 1), (1, length_)],
+    # [(length___, 1), (length___, length___), (length___, 1)],
 ]
 
 # create data (list of dicts) for csv creation
@@ -87,67 +88,80 @@ torch.cuda.empty_cache()
 counter = 0
 # bp()
 # define inputs over hyperparams
-for sparsity in sparsities:
-    for tshape in tshapes:
-        for dim in [0, 1, 2]:
+with profile(
+    activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA], record_shapes=True
+) as prof:
+    with record_function("bm"):
+        for sparsity in sparsities:
+            for tshape in tshapes:
+                for dim in [0, 1, 2]:
 
-            torch.cuda.empty_cache()
+                    torch.cuda.empty_cache()
 
-            # print_util_info()
-            # bp()
+                    # print_util_info()
+                    # bp()
 
-            if dim >= len(tshape):
-                continue
+                    if dim >= len(tshape):
+                        continue
 
-            print(f"DEBUG: Current input has dims {len(tshape)}")
+                    print(f"DEBUG: Current input has dims {len(tshape)}")
 
-            input = torch.rand(
-                size=tshape, device="cuda", dtype=torch.float32, requires_grad=False
-            )
+                    input = torch.rand(
+                        size=tshape,
+                        device="cuda",
+                        dtype=torch.float16,
+                        requires_grad=False,
+                    )
 
-            index = torch.randint(
-                low=0,
-                high=input.shape[dim],
-                size=input.shape,
-                dtype=torch.int64,
-                device="cuda",
-                requires_grad=False,
-            )
+                    index = torch.randint(
+                        low=0,
+                        high=input.shape[dim],
+                        size=input.shape,
+                        dtype=torch.int64,
+                        device="cuda",
+                        requires_grad=False,
+                    )
 
-            # randomly drop values to create sparsity
-            input = torch.nn.functional.dropout(
-                input, p=sparsity, training=True, inplace=False
-            )
+                    print(
+                        f"SIZE TOTAL: {(input.element_size()*input.numel() + index.element_size()*index.numel())/1000000} mb"
+                    )
 
-            # begin benchmark logic
-            t0 = benchmark.Timer(
-                stmt="op_native_gather(input, dim, index)",
-                setup="from __main__ import op_native_gather",
-                globals={"input": input, "dim": dim, "index": index},
-            )
-            m0 = t0.blocked_autorange()
+                    # randomly drop values to create sparsity
+                    input = torch.nn.functional.dropout(
+                        input, p=sparsity, training=True, inplace=False
+                    )
 
-            bm_val = m0.median
+                    # begin benchmark logic
+                    t0 = benchmark.Timer(
+                        stmt="op_native_gather(input, dim, index)",
+                        setup="from __main__ import op_native_gather",
+                        globals={"input": input, "dim": dim, "index": index},
+                    )
 
-            del m0
-            del t0
+                    bm_val = t0.timeit(100).median
 
-            print_util_info()
+                    del t0
 
-            input_dims_str = str(len(tshape))
-            sort_dim_str = str(dim)
+                    print_util_info()
 
-            params_str = input_dims_str + "; " + sort_dim_str
+                    input_dims_str = str(len(tshape))
+                    sort_dim_str = str(dim)
 
-            formatted_input_dims = str(tshape)
+                    params_str = input_dims_str + "; " + sort_dim_str
 
-            data.append([params_str, formatted_input_dims, sparsity, bm_val])
+                    formatted_input_dims = str(tshape)
 
-            del input
-            del index
+                    data.append([params_str, formatted_input_dims, sparsity, bm_val])
 
-            print(f"done with {counter}")
-            counter += 1
+                    del input
+                    del index
+
+                    print(f"done with {counter}")
+                    counter += 1
+
+
+# print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10))
+
 
 df = pd.DataFrame(data)
 df.columns = [
@@ -156,4 +170,4 @@ df.columns = [
     "Sparsity",
     "GPU clock time",
 ]
-df.to_csv(f"data_sn_shapes/{op_name}.csv")
+df.to_csv(f"mem_prof_data/{op_name}.csv")
