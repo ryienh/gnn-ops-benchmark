@@ -1,6 +1,7 @@
 # Scatter ops
 import sys
 import math
+import random
 import numpy as np
 import torch
 import torch.utils.benchmark as benchmark
@@ -12,19 +13,10 @@ sys.path.insert(0, "/home/rhosseini/gnn-kernel-benchmark")  # FIXME
 
 from graph_benchmark.benchmark.OpBenchmark import make_sparse
 
-import matplotlib.pyplot as plt
-
-"""
-Begin scatter ops
-"""
-
-import random
-import numpy
-
 
 def setup_seed(seed):
     random.seed(seed)
-    numpy.random.seed(seed)
+    np.random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
@@ -56,21 +48,9 @@ def op_native_transpose(matA):
 # dimensions: src size, idx size, src sparsity
 setup_seed(42)
 op_name = "sparse_transpose"
+num_bm_runs = 100
 
-
-# length_ = 100
-
-# length__ = 10
-
-# sparsities = [0.5, 0.9, 0.99]
-
-
-# tshapes = [
-#     (length_, length_),
-#     # (length__, 1),
-# ]
-
-lengths_ = np.linspace(4_000_000, 20_000_000, num=100).tolist()
+lengths_ = np.linspace(4_000_000, 60_000_000, num=100).tolist()
 lengths_ = [int(math.sqrt(x)) for x in lengths_]
 tshapes = [(length_, length_) for length_ in lengths_]
 sparsities = [0.9]
@@ -85,22 +65,19 @@ if device == "cpu":
 
 torch.cuda.empty_cache()
 counter = 0
-# bp()
+
 # define inputs over hyperparams
 for sparsity in sparsities:
     for tshape in tshapes:
 
         torch.cuda.empty_cache()
 
-        # if dim >= len(tshape):
-        #     continue
-
         print(f"DEBUG: Current input has dims {tshape}")
 
         matA = torch.rand(
             size=tshape,
             device="cuda",
-            dtype=torch.float32,
+            dtype=torch.float16,
             requires_grad=False,
         )
 
@@ -108,64 +85,17 @@ for sparsity in sparsities:
 
         # randomly drop values to create sparsity
 
-        matA = make_sparse(matA, sparsity)
-        # print("DEBUG")
-        # print(matA.shape)
-        sparsity = (torch.numel(matA) - torch.count_nonzero(matA)) / torch.numel(matA)
-        print(f"Sparsity is {sparsity}")
-        # plt.imshow(matA.to("cpu").numpy())
-        # plt.colorbar()
-        # plt.savefig(f"debug_figs/{sparsity}.png")
-        # print(matA)
-        # matA = torch.nn.functional.dropout(
-        #     matA, p=sparsity, training=True, inplace=False
-        # )
-
-        torch.cuda.empty_cache()
-
-        m = matA.shape[0]
-        n = matA.shape[1]
-
-        torch.cuda.empty_cache()
-
-        print("Converting to COO")
-        matA = matA.to_sparse()
-        torch.cuda.empty_cache()
-
-        print("Converted to COO")
-
-        indexA = matA.indices()
-        valueA = matA.values()
-        torch.cuda.empty_cache()
-
-        # begin benchmark logic
-        t0 = benchmark.Timer(
-            stmt="op_sparse_transpose(indexA, valueA, m, n)",
-            setup="from __main__ import op_sparse_transpose",
-            globals={
-                "indexA": indexA,
-                "valueA": valueA,
-                "m": m,
-                "n": n,
-            },
+        matA = torch.nn.functional.dropout(
+            matA, p=sparsity, training=True, inplace=False
         )
-
-        print(f"SIZE TOTAL: {(matA.element_size()*matA.numel())/1000000} mb")
-
-        # blocked autorange
-        # m0 = t0.blocked_autorange()
-        # new way
-        bm_val = t0.timeit(2).median
-
-        # bm_val = t0.median
-
-        # del m0
-        del t0
+        sparsity = (torch.numel(matA) - torch.count_nonzero(matA)) / torch.numel(matA)
+        sparsity = float(sparsity)
+        print(f"Sparsity is {sparsity}")
 
         torch.cuda.empty_cache()
 
         print("Begin benchmark logic (native)")
-        t1 = benchmark.Timer(
+        t0 = benchmark.Timer(
             stmt="op_native_transpose(matA)",
             setup="from __main__ import op_native_transpose",
             globals={
@@ -173,9 +103,11 @@ for sparsity in sparsities:
             },
         )
 
-        bm_native = t1.timeit(2).median
+        bm = t0.timeit(num_bm_runs)
+        bm_native = bm.median
+        bm_iqr = bm.iqr
 
-        del t1
+        del t0
 
         print_util_info()
 
@@ -187,13 +119,11 @@ for sparsity in sparsities:
 
         formatted_sparsities = str(sparsity)
 
-        vals = str(bm_val) + " (" + str(bm_native) + ")"
+        bms = str(bm_native) + "(" + str(bm_iqr) + ")"
 
-        data.append([params_str, formatted_input_dims, formatted_sparsities, vals])
+        data.append([params_str, formatted_input_dims, formatted_sparsities, bms])
 
         del matA
-        del indexA
-        del valueA
 
         print(f"done with {counter}")
         counter += 1
@@ -201,8 +131,8 @@ for sparsity in sparsities:
 df = pd.DataFrame(data)
 df.columns = [
     "Input Shape",
-    "Input size (>95% mem util)*",
+    "Input size",
     "Sparsities (input, matA, matB)",
-    "GPU clock time",
+    "GPU clock time (IQR)",
 ]
 df.to_csv(f"mem_prof_data/{op_name}.csv")
