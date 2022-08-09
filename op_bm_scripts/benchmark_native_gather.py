@@ -1,50 +1,24 @@
-# Scatter ops
-
+from filecmp import clear_cache
+import sys
 import math
 import numpy as np
 import torch
 import torch.utils.benchmark as benchmark
-from torch.profiler import profile, record_function, ProfilerActivity
 import pandas as pd
 
-from pdb import set_trace as bp
 
-
-"""
-Begin scatter ops
-"""
-import random
-import numpy
-
-
-def setup_seed(seed):
-    random.seed(seed)
-    numpy.random.seed(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
-    torch.backends.cudnn.deterministic = True
-
-
-def print_util_info():
-    print("GPU INFO:")
-    print("\t Memory allocated: ", (torch.cuda.memory_allocated() / 4e10))
-    print("\t Memory reserved: ", (torch.cuda.memory_reserved() / 4e10))
-
-
-def combine_vals(bm_val, bm_val_native):
-    return str(bm_val) + " (" + str(bm_val_native) + ")"
+sys.path.insert(0, "/home/rhosseini/gnn-kernel-benchmark")  # FIXME
+from graph_benchmark.benchmark.util import *
 
 
 def op_native_gather(input, dim, index):
-    """Computes max scatter operation"""
+    """Computes gather operation"""
     out = torch.gather(input, dim, index)
     return out
 
 
 # Configurable hyperparams here
 # dimensions: src size, idx size, src sparsity
-# scatter_mean required 0.82 reduction factor
 op_name = "native_gather"
 # native_exists = True
 # length_ = int(1024)
@@ -62,11 +36,12 @@ op_name = "native_gather"
 #     (length___, length___, length___),
 # ]
 
-lengths_ = np.linspace(1_500_000, 100_000_000, num=100).tolist()
+lengths_ = np.linspace(1_500_000, 40_000_000, num=100).tolist()
 lengths_ = [int(math.sqrt(x)) for x in lengths_]
 # length__ = int(math.sqrt(3495200))
 # length___ = int(math.sqrt(3495200))
 sparsities = [0]
+num_bm_runs = 100
 
 
 tshapes = [
@@ -94,9 +69,6 @@ for sparsity in sparsities:
 
             torch.cuda.empty_cache()
 
-            # print_util_info()
-            # bp()
-
             if dim >= len(tshape):
                 continue
 
@@ -118,9 +90,12 @@ for sparsity in sparsities:
                 requires_grad=False,
             )
 
-            print(
-                f"SIZE TOTAL: {(input.element_size()*input.numel() + index.element_size()*index.numel())/1000000} mb"
-            )
+            total_elts = input.numel() + index.numel()
+            input_mem = (
+                input.element_size() * input.numel()
+                + index.element_size() * index.numel()
+            ) / 1000000
+            print(f"SIZE TOTAL (THEORETICAL): {input_mem} mb")
 
             # randomly drop values to create sparsity
             input = torch.nn.functional.dropout(
@@ -134,9 +109,13 @@ for sparsity in sparsities:
                 globals={"input": input, "dim": dim, "index": index},
             )
 
-            bm_val = t0.timeit(100).median
+            bm = t0.timeit(num_bm_runs)
+            bm_val = bm.median
+            bm_iqr = bm.iqr
 
             del t0
+
+            mem = get_reserved_in_mb()
 
             print_util_info()
 
@@ -147,7 +126,19 @@ for sparsity in sparsities:
 
             formatted_input_dims = str(tshape)
 
-            data.append([params_str, formatted_input_dims, sparsity, bm_val])
+            bm_val = str(bm_val) + "(" + str(bm_iqr) + ")"
+
+            data.append(
+                [
+                    params_str,
+                    formatted_input_dims,
+                    sparsity,
+                    total_elts,
+                    input_mem,
+                    mem,
+                    bm_val,
+                ]
+            )
 
             del input
             del index
@@ -158,9 +149,12 @@ for sparsity in sparsities:
 
 df = pd.DataFrame(data)
 df.columns = [
-    "Input dims, index dim",
-    "Input size ",
+    "Input dims",
+    "Input size",
     "Sparsity",
+    "Total elements",
+    "Input memory",
+    "Total Memory",
     "GPU clock time (IQR)",
 ]
 df.to_csv(f"mem_prof_data/{op_name}.csv")

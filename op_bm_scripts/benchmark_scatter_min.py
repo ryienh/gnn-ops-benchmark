@@ -1,5 +1,6 @@
-# Scatter ops
-
+import sys
+import math
+import numpy as np
 import torch
 from torch_scatter import (
     scatter_min,
@@ -7,42 +8,12 @@ from torch_scatter import (
 import torch.utils.benchmark as benchmark
 import pandas as pd
 
-# from graph_benchmark.datasets.fakeDatasets import FakeDataset
-
-from pdb import set_trace as bp
-
-# wandb.init(project="scatter-op-benchmark")
-
-"""
-Begin scatter ops
-"""
-
-import random
-import numpy
-
-
-def setup_seed(seed):
-    random.seed(seed)
-    numpy.random.seed(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
-    torch.backends.cudnn.deterministic = True
-
-
-def print_util_info():
-    print("GPU INFO:")
-    print("\t Memory allocated: ", (torch.cuda.memory_allocated() / 4e10))
-    print("\t Memory reserved: ", (torch.cuda.memory_reserved() / 4e10))
-
-
-def combine_vals(bm_val, bm_val_native):
-    return str(bm_val) + " (" + str(bm_val_native) + ")"
+sys.path.insert(0, "/home/rhosseini/gnn-kernel-benchmark")  # FIXME
+from graph_benchmark.benchmark.util import *
 
 
 def op_scatter_min(src, idx):
-    """Computes max scatter operation"""
-
+    """Computes min scatter operation"""
     out = scatter_min(src, idx)
     return out
 
@@ -51,15 +22,21 @@ def op_scatter_min(src, idx):
 setup_seed(42)
 op_name = "scatter_min"
 native_exists = True
-length_ = 1600384000 * 0.92
-length__ = 40000 * 0.95
+# length_ = 512
+# length__ = 256
 reduce_f_ = [1, 2, 4, 8]
-sparsities = [0, 0.5, 0.9, 0.99]
-tshapes = [
-    (int(length_),),
-    (int(length__), int(length__)),
-]
+# sparsities = [0, 0.5, 0.9, 0.99]
+# tshapes = [
+#     (int(length_),),
+#     (int(length__), int(length__)),
+# ]
+lengths_ = np.linspace(1_500_000, 45_000_000, num=100).tolist()
+lengths_ = [int(math.sqrt(x)) for x in lengths_]
+sparsities = [0]
+num_bm_runs = 100
 
+
+tshapes = [(length_, length_) for length_ in lengths_]
 
 # create data (list of dicts) for csv creation
 data = []
@@ -79,16 +56,16 @@ for reduce_f in reduce_f_:
 
             torch.cuda.empty_cache()
 
-            # print_util_info()
-            # bp()
-
             idx_dims = src_dims
 
             max_idx = int(src_dims[0] / reduce_f)
 
             # print(src_dims[2])
             src = torch.rand(
-                size=src_dims, device="cuda", dtype=torch.float32, requires_grad=False
+                size=src_dims,
+                device="cuda",
+                dtype=torch.float16,
+                requires_grad=False,
             )
             idx = torch.randint(
                 high=max_idx,
@@ -103,44 +80,47 @@ for reduce_f in reduce_f_:
                 src, p=sparsity, training=True, inplace=False
             )
 
+            total_elts = idx.numel() + src.numel()
+            input_mem = (
+                idx.element_size() * idx.numel() + src.element_size() * src.numel()
+            ) / 1000000
+
             # begin benchmark logic
             t0 = benchmark.Timer(
                 stmt="op_scatter_min(src, idx)",
                 setup="from __main__ import op_scatter_min",
                 globals={"src": src, "idx": idx},
             )
-            m0 = t0.blocked_autorange()
 
-            bm_val = m0.median
-            bm_iqr = m0.iqr
+            bm = t0.timeit(num_bm_runs)
+            bm_val = bm.median
+            bm_iqr = bm.iqr
 
-            print(f"for sparsity: {sparsity}")
-
-            if len(src_dims) == 1:
-                print(f"Sparsity: {torch.count_nonzero(src)/length_}")
-            else:
-                print(f"Sparsity: {torch.count_nonzero(src)/length__**2}")
-
-            del m0
             del t0
+            del bm
+
+            mem = get_reserved_in_mb()
 
             print_util_info()
 
             shape_name = "LS" if len(src_dims) == 1 else "square"
             params_str = str(reduce_f) + " " + shape_name
-            bm_data = "%g" % round(bm_val, 3)
+            bm_pyg_data = str(bm_val) + "(" + str(bm_iqr) + ")"
 
-            # output_value = (
-            #     bm_val if not native_exists else combine_vals(bm_val, bm_val_native)
-            # )
-
-            data.append([params_str, str(src_dims), sparsity, bm_data])
+            data.append(
+                [
+                    params_str,
+                    str(src_dims),
+                    sparsity,
+                    total_elts,
+                    input_mem,
+                    mem,
+                    bm_pyg_data,
+                ]
+            )
 
             del src
             del idx
-            # if native_exists:
-            #     del t1
-            #     del m1
 
             # print_util_info()
 
@@ -152,8 +132,11 @@ for reduce_f in reduce_f_:
 df = pd.DataFrame(data)
 df.columns = [
     "Reduce factor, shape",
-    "Input size (>95% mem util)*",
+    "Input size",
     "Sparsity",
-    "GPU clock time",
+    "Total elements",
+    "Input memory",
+    "Total Memory",
+    "GPU clock time py geo (IQR)",
 ]
-df.to_csv(f"new_data/{op_name}.csv")
+df.to_csv(f"mem_prof_data/{op_name}.csv")

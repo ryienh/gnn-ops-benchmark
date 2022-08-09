@@ -1,41 +1,17 @@
-# Scatter ops
+import sys
 import math
 import torch
 import torch.utils.benchmark as benchmark
 import pandas as pd
-
-from pdb import set_trace as bp
-
-
-"""
-Begin scatter ops
-"""
-import random
 import numpy as np
-import numpy
 
 
-def setup_seed(seed):
-    random.seed(seed)
-    numpy.random.seed(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
-    torch.backends.cudnn.deterministic = True
-
-
-def print_util_info():
-    print("GPU INFO:")
-    print("\t Memory allocated: ", (torch.cuda.memory_allocated() / 4e10))
-    print("\t Memory reserved: ", (torch.cuda.memory_reserved() / 4e10))
-
-
-def combine_vals(bm_val, bm_val_native):
-    return str(bm_val) + " (" + str(bm_val_native) + ")"
+sys.path.insert(0, "/home/rhosseini/gnn-kernel-benchmark")  # FIXME
+from graph_benchmark.benchmark.util import *
 
 
 def op_native_index_add_(input, dim, index, source):
-    """Computes max scatter operation"""
+    """Computes index_add_ operation"""
     input.index_add_(dim, index, source)
     return None
 
@@ -63,6 +39,7 @@ op_name = "native_index_add_"
 lengths_ = np.linspace(2_500_000, 100_000_000, num=100).tolist()
 lengths_ = [int(math.sqrt(x)) for x in lengths_]
 sparsities = [0]
+num_bm_runs = 100
 
 
 tshapes = [(length_, length_) for length_ in lengths_]
@@ -85,9 +62,6 @@ for sparsity in sparsities:
         for dim in [1]:
 
             torch.cuda.empty_cache()
-
-            # print_util_info()
-            # bp()
 
             if dim >= len(tshape):
                 continue
@@ -116,6 +90,14 @@ for sparsity in sparsities:
                 source, p=sparsity, training=True, inplace=False
             )
 
+            total_elts = input.numel() + source.numel() + index.numel()
+            input_mem = (
+                input.element_size() * input.numel()
+                + index.element_size() * index.numel()
+                + source.element_size() * source.numel()
+            ) / 1000000
+            print(f"SIZE TOTAL (THEORETICAL): {input_mem} mb")
+
             print(
                 f"SIZE TOTAL: {(input.element_size()*input.numel() + source.element_size()*source.numel() + index.element_size()*index.numel())/1000000} mb"
             )
@@ -127,9 +109,13 @@ for sparsity in sparsities:
                 globals={"input": input, "dim": dim, "index": index, "source": source},
             )
 
-            bm_val = t0.timeit(100).median
+            bm = t0.timeit(num_bm_runs)
+            bm_val = bm.median
+            bm_iqr = bm.iqr
 
             del t0
+
+            mem = get_reserved_in_mb()
 
             print_util_info()
 
@@ -140,7 +126,19 @@ for sparsity in sparsities:
 
             formatted_input_dims = str(tshape)
 
-            data.append([params_str, formatted_input_dims, sparsity, bm_val])
+            bm_val = str(bm_val) + "(" + str(bm_iqr) + ")"
+
+            data.append(
+                [
+                    params_str,
+                    formatted_input_dims,
+                    sparsity,
+                    total_elts,
+                    input_mem,
+                    mem,
+                    bm_val,
+                ]
+            )
 
             del input
 
@@ -150,8 +148,11 @@ for sparsity in sparsities:
 df = pd.DataFrame(data)
 df.columns = [
     "Input dims, index dim",
-    "Input size (>95% mem util)*",
+    "Input size",
     "Sparsity",
-    "GPU clock time",
+    "Total elements",
+    "Input memory",
+    "TOtal Memory",
+    "GPU clock time (IQR)",
 ]
 df.to_csv(f"mem_prof_data/{op_name}.csv")

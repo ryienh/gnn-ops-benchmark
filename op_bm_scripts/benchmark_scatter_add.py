@@ -1,5 +1,4 @@
-# Scatter ops
-
+import sys
 import math
 import numpy as np
 import torch
@@ -7,42 +6,14 @@ from torch_scatter import (
     scatter_add,
 )
 import torch.utils.benchmark as benchmark
-from torch.profiler import profile, record_function, ProfilerActivity
 import pandas as pd
 
-
-from pdb import set_trace as bp
-
-
-"""
-Begin scatter ops
-"""
-
-import random
-import numpy
-
-
-def setup_seed(seed):
-    random.seed(seed)
-    numpy.random.seed(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
-    torch.backends.cudnn.deterministic = True
-
-
-def print_util_info():
-    print("GPU INFO:")
-    print("\t Memory allocated: ", (torch.cuda.memory_allocated() / 4e10))
-    print("\t Memory reserved: ", (torch.cuda.memory_reserved() / 4e10))
-
-
-def combine_vals(bm_val, bm_val_native):
-    return str(bm_val) + " (" + str(bm_val_native) + ")"
+sys.path.insert(0, "/home/rhosseini/gnn-kernel-benchmark")  # FIXME
+from graph_benchmark.benchmark.util import *
 
 
 def op_scatter_add(src, idx):
-    """Computes max scatter operation"""
+    """Computes add scatter operation"""
 
     out = scatter_add(src, idx)
     return out
@@ -66,9 +37,10 @@ reduce_f_ = [1, 2, 4, 8]
 #     (int(length_),),
 #     (int(length__), int(length__)),
 # ]
-lengths_ = np.linspace(1_500_000, 100_000_000, num=100).tolist()
+lengths_ = np.linspace(1_500_000, 45_000_000, num=100).tolist()
 lengths_ = [int(math.sqrt(x)) for x in lengths_]
 sparsities = [0]
+num_bm_runs = 100
 
 
 tshapes = [(length_, length_) for length_ in lengths_]
@@ -85,107 +57,108 @@ torch.cuda.empty_cache()
 counter = 0
 
 # define inputs over hyperparams
-with profile(
-    activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA], record_shapes=True
-) as prof:
-    with record_function("bm"):
-        for reduce_f in reduce_f_:
-            for sparsity in sparsities:
-                for src_dims in tshapes:
+for reduce_f in reduce_f_:
+    for sparsity in sparsities:
+        for src_dims in tshapes:
 
-                    torch.cuda.empty_cache()
+            torch.cuda.empty_cache()
 
-                    # print_util_info()
-                    # bp()
+            idx_dims = src_dims
 
-                    idx_dims = src_dims
+            max_idx = int(src_dims[0] / reduce_f)
 
-                    max_idx = int(src_dims[0] / reduce_f)
+            # print(src_dims[2])
+            src = torch.rand(
+                size=src_dims,
+                device="cuda",
+                dtype=torch.float16,
+                requires_grad=False,
+            )
+            idx = torch.randint(
+                high=max_idx,
+                size=idx_dims,
+                device="cuda",
+                dtype=torch.int64,
+                requires_grad=False,
+            )
 
-                    # print(src_dims[2])
-                    src = torch.rand(
-                        size=src_dims,
-                        device="cuda",
-                        dtype=torch.float16,
-                        requires_grad=False,
-                    )
-                    idx = torch.randint(
-                        high=max_idx,
-                        size=idx_dims,
-                        device="cuda",
-                        dtype=torch.int64,
-                        requires_grad=False,
-                    )
+            # randomly drop values to create sparsity
+            src = torch.nn.functional.dropout(
+                src, p=sparsity, training=True, inplace=False
+            )
 
-                    # randomly drop values to create sparsity
-                    src = torch.nn.functional.dropout(
-                        src, p=sparsity, training=True, inplace=False
-                    )
+            total_elts = idx.numel() + src.numel()
+            input_mem = (
+                idx.element_size() * idx.numel() + src.element_size() * src.numel()
+            ) / 1000000
 
-                    print(
-                        f"SIZE TOTAL: {(src.element_size()*src.numel() + idx.element_size()*idx.numel())/1000000} mb"
-                    )
+            # begin benchmark logic
+            t0 = benchmark.Timer(
+                stmt="op_scatter_add(src, idx)",
+                setup="from __main__ import op_scatter_add",
+                globals={"src": src, "idx": idx},
+            )
 
-                    # print(
-                    #     f"for sparsity: {sparsity}, percent non-zero is: {torch.count_nonzero(src) / src.numel()}"
-                    # )
+            bm = t0.timeit(num_bm_runs)
+            bm_val = bm.median
+            bm_iqr = bm.iqr
 
-                    # begin benchmark logic
-                    t0 = benchmark.Timer(
-                        stmt="op_scatter_add(src, idx)",
-                        setup="from __main__ import op_scatter_add",
-                        globals={"src": src, "idx": idx},
-                    )
+            del t0
+            del bm
 
-                    m = t0.timeit(100)
-                    bm_val = m.median
-                    bm_iqr = m.iqr
+            mem = get_reserved_in_mb()
 
-                    del t0
-                    del m
+            t1 = benchmark.Timer(
+                stmt="op_native_scatter_add_(src, idx)",
+                setup="from __main__ import op_native_scatter_add_",
+                globals={"src": src, "idx": idx},
+            )
 
-                    t1 = benchmark.Timer(
-                        stmt="op_native_scatter_add_(src, idx)",
-                        setup="from __main__ import op_native_scatter_add_",
-                        globals={"src": src, "idx": idx},
-                    )
+            bm_native = t1.timeit(num_bm_runs)
+            bm_native_val = bm_native.median
+            bm_native_iqr = bm_native.iqr
 
-                    bm_val_native = t1.timeit(100).median
+            del t1
 
-                    del t1
+            print_util_info()
 
-                    print_util_info()
+            shape_name = "LS" if len(src_dims) == 1 else "square"
+            params_str = str(reduce_f) + " " + shape_name
+            bm_pyg_data = str(bm_val) + "(" + str(bm_iqr) + ")"
+            bm_native_data = str(bm_native_val) + "(" + str(bm_native_iqr) + ")"
 
-                    shape_name = "LS" if len(src_dims) == 1 else "square"
-                    params_str = str(reduce_f) + " " + shape_name
-                    bm_data = (
-                        "%g" % round(bm_val, 3)
-                        + " ("
-                        + "%g" % round(bm_val_native, 3)
-                        + ")"
-                    )
+            data.append(
+                [
+                    params_str,
+                    str(src_dims),
+                    sparsity,
+                    total_elts,
+                    input_mem,
+                    mem,
+                    bm_pyg_data,
+                    bm_native_data,
+                ]
+            )
 
-                    data.append([params_str, str(src_dims), sparsity, bm_data])
+            del src
+            del idx
 
-                    del src
-                    del idx
+            # print_util_info()
 
-                    # print_util_info()
+            # torch.cuda.empty_cache()
 
-                    # torch.cuda.empty_cache()
-
-                    print(f"done with {counter}")
-                    counter += 1
-
-
-# print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10))
-
+            print(f"done with {counter}")
+            counter += 1
 
 df = pd.DataFrame(data)
 df.columns = [
     "Reduce factor, shape",
-    "Input size (>95% mem util)*",
+    "Input size",
     "Sparsity",
-    "GPU clock time",
+    "Total elements",
+    "Input memory",
+    "Total Memory",
+    "GPU clock time py geo (IQR)",
+    "GPU clock time native (IQR)",
 ]
 df.to_csv(f"mem_prof_data/{op_name}.csv")
