@@ -12,16 +12,16 @@ sys.path.insert(0, "/home/rhosseini/gnn-kernel-benchmark")  # FIXME
 from graph_benchmark.benchmark.util import *
 
 
-def op_scatter_add(src, idx):
+def op_scatter_add(src, idx, dim):
     """Computes add scatter operation"""
 
-    out = scatter_add(src, idx)
+    out = scatter_add(src, idx, dim=dim)
     return out
 
 
-def op_native_scatter_add_(src, idx):
+def op_native_scatter_add_(src, idx, dim):
     temp = torch.zeros_like(src)
-    temp.scatter_add_(-1, idx, src)
+    temp.scatter_add_(dim, idx, src)
     return None
 
 
@@ -60,99 +60,100 @@ counter = 0
 for reduce_f in reduce_f_:
     for sparsity in sparsities:
         for src_dims in tshapes:
+            for dim in [0, 1]:
 
-            torch.cuda.empty_cache()
+                torch.cuda.empty_cache()
 
-            idx_dims = src_dims
+                idx_dims = src_dims
 
-            max_idx = int(src_dims[0] / reduce_f)
+                max_idx = int(src_dims[0] / reduce_f)
 
-            # print(src_dims[2])
-            src = torch.rand(
-                size=src_dims,
-                device="cuda",
-                dtype=torch.float16,
-                requires_grad=False,
-            )
-            idx = torch.randint(
-                high=max_idx,
-                size=idx_dims,
-                device="cuda",
-                dtype=torch.int64,
-                requires_grad=False,
-            )
+                # print(src_dims[2])
+                src = torch.rand(
+                    size=src_dims,
+                    device="cuda",
+                    dtype=torch.float16,
+                    requires_grad=False,
+                )
+                idx = torch.randint(
+                    high=max_idx,
+                    size=idx_dims,
+                    device="cuda",
+                    dtype=torch.int64,
+                    requires_grad=False,
+                )
 
-            # randomly drop values to create sparsity
-            src = torch.nn.functional.dropout(
-                src, p=sparsity, training=True, inplace=False
-            )
+                # randomly drop values to create sparsity
+                src = torch.nn.functional.dropout(
+                    src, p=sparsity, training=True, inplace=False
+                )
 
-            total_elts = idx.numel() + src.numel()
-            input_mem = (
-                idx.element_size() * idx.numel() + src.element_size() * src.numel()
-            ) / 1000000
+                total_elts = idx.numel() + src.numel()
+                input_mem = (
+                    idx.element_size() * idx.numel() + src.element_size() * src.numel()
+                ) / 1000000
 
-            # begin benchmark logic
-            t0 = benchmark.Timer(
-                stmt="op_scatter_add(src, idx)",
-                setup="from __main__ import op_scatter_add",
-                globals={"src": src, "idx": idx},
-            )
+                # begin benchmark logic
+                t0 = benchmark.Timer(
+                    stmt="op_scatter_add(src, idx, dim)",
+                    setup="from __main__ import op_scatter_add",
+                    globals={"src": src, "idx": idx, "dim": dim},
+                )
 
-            bm = t0.timeit(num_bm_runs)
-            bm_val = bm.median
-            bm_iqr = bm.iqr
+                bm = t0.timeit(num_bm_runs)
+                bm_val = bm.median
+                bm_iqr = bm.iqr
 
-            del t0
-            del bm
+                del t0
+                del bm
 
-            mem = get_reserved_in_mb()
+                mem = get_reserved_in_mb()
 
-            t1 = benchmark.Timer(
-                stmt="op_native_scatter_add_(src, idx)",
-                setup="from __main__ import op_native_scatter_add_",
-                globals={"src": src, "idx": idx},
-            )
+                t1 = benchmark.Timer(
+                    stmt="op_native_scatter_add_(src, idx, dim)",
+                    setup="from __main__ import op_native_scatter_add_",
+                    globals={"src": src, "idx": idx, "dim": dim},
+                )
 
-            bm_native = t1.timeit(num_bm_runs)
-            bm_native_val = bm_native.median
-            bm_native_iqr = bm_native.iqr
+                bm_native = t1.timeit(num_bm_runs)
+                bm_native_val = bm_native.median
+                bm_native_iqr = bm_native.iqr
 
-            del t1
+                del t1
 
-            print_util_info()
+                print_util_info()
 
-            shape_name = "LS" if len(src_dims) == 1 else "square"
-            params_str = str(reduce_f) + " " + shape_name
-            bm_pyg_data = str(bm_val) + "(" + str(bm_iqr) + ")"
-            bm_native_data = str(bm_native_val) + "(" + str(bm_native_iqr) + ")"
+                shape_name = "LS" if len(src_dims) == 1 else "square"
+                params_str = str(reduce_f) + " " + shape_name + " " + str(dim)
+                bm_pyg_data = str(bm_val) + "(" + str(bm_iqr) + ")"
+                bm_native_data = str(bm_native_val) + "(" + str(bm_native_iqr) + ")"
 
-            data.append(
-                [
-                    params_str,
-                    str(src_dims),
-                    sparsity,
-                    total_elts,
-                    input_mem,
-                    mem,
-                    bm_pyg_data,
-                    bm_native_data,
-                ]
-            )
+                data.append(
+                    [
+                        params_str,
+                        str(src_dims),
+                        sparsity,
+                        total_elts,
+                        input_mem,
+                        mem,
+                        bm_pyg_data,
+                        bm_native_data,
+                    ]
+                )
 
-            del src
-            del idx
+                del src
+                del idx
 
-            # print_util_info()
+                # print_util_info()
 
-            # torch.cuda.empty_cache()
+                # torch.cuda.empty_cache()
 
-            print(f"done with {counter}")
-            counter += 1
+                print(f"done with {counter}")
+                counter += 1
 
 df = pd.DataFrame(data)
 df.columns = [
-    "Reduce factor, shape",
+    "Reduce factor, shape, dim",
     "Input size",
     "Sparsity",
     "Total elements",
