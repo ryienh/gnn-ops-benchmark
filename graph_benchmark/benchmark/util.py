@@ -24,6 +24,10 @@ def print_util_info():
     print("\t Memory reserved: ", (torch.cuda.memory_reserved() / 4e10))
 
 
+def get_reserved_in_mb():
+    return torch.cuda.memory_reserved() / 1000000
+
+
 def combine_vals(bm_val, bm_val_native):
     return str(bm_val) + " (" + str(bm_val_native) + ")"
 
