@@ -1,0 +1,25 @@
+Info:
+All ops are tested with batch size of 512, are run 1000 times on random examples of the given dataset, and are mapped to a hidden dim 2048 where applicable. 
+Other model params are left as default. PNA conv uses the following settings:
+aggregators=["mean", "min", "max", "std"],
+scalers=["identity", "amplification", "attenuation"]
+
+Statistics for model FiLMConv and dataset QM9
+	StatsSummary(time_mean=0.021335149183869362, time_std=0.05976231396198273, max_allocated_cuda=1280.87, max_reserved_cuda=1290.0, max_active_cuda=1280.87, min_nvidia_smi_free_cuda=39142.6, max_nvidia_smi_used_cuda=3359.39)
+	Model actual disk size in mb: 0.558875
+	Data example theoretical data usage in mb: 1.328184
+
+Statistics for model GIN and dataset QM9
+	StatsSummary(time_mean=0.003017131704837084, time_std=0.0020002603996545076, max_allocated_cuda=75.71, max_reserved_cuda=78.0, max_active_cuda=75.71, min_nvidia_smi_free_cuda=40413.38, max_nvidia_smi_used_cuda=2088.61)
+	Model actual disk size in mb: 0.099619
+	Data example theoretical data usage in mb: 1.313248
+
+Statistics for model CGConv and dataset QM9
+	StatsSummary(time_mean=0.004380426835268736, time_std=0.0023120183032006025, max_allocated_cuda=7.67, max_reserved_cuda=28.0, max_active_cuda=7.67, min_nvidia_smi_free_cuda=40465.81, max_nvidia_smi_used_cuda=2036.19)
+	Model actual disk size in mb: 0.0036149999999999997
+	Data example theoretical data usage in mb: 1.3324799999999999
+
+Statistics for model PNA and dataset MNIST
+	StatsSummary(time_mean=0.011510767973959446, time_std=0.002638190286234021, max_allocated_cuda=887.88, max_reserved_cuda=904.0, max_active_cuda=887.88, min_nvidia_smi_free_cuda=39547.32, max_nvidia_smi_used_cuda=2954.67)
+	Model actual disk size in mb: 16.902295
+	Data example theoretical data usage in mb: 6.4428399999999995
