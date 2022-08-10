@@ -47,7 +47,7 @@ def inference(model, loader):
 
     for idx, data in tqdm.tqdm(enumerate(loader), total=Config.n):
 
-        x = data.x.cuda()
+        x = data.x.to(torch.float16).cuda()
         edge_index = data.edge_index.cuda()
 
         # total compute only
@@ -58,6 +58,48 @@ def inference(model, loader):
             break
 
     return stats
+
+
+def inference_with_profs(model, loader):
+    with torch.profiler.profile(
+        schedule=torch.profiler.schedule(
+            wait=1,
+            warmup=1,
+            active=2,
+            repeat=1,
+        ),
+        on_trace_ready=torch.profiler.tensorboard_trace_handler(
+            f"./log/tensorboard/{model_name}_{dataset_name}_inf"
+        ),
+        record_shapes=True,
+        profile_memory=True,
+        with_stack=True,
+    ) as prof_inf:
+
+        with torch.no_grad():
+
+            for idx, data in tqdm.tqdm(enumerate(loader), total=len(loader)):
+
+                x = data.x.cuda()
+                edge_index = data.edge_index.cuda()
+
+                out = model(x, edge_index)
+
+                prof_inf.step()
+
+
+# with warnings.catch_warnings():
+#     warnings.simplefilter(action="ignore", category=FutureWarning)
+
+#     # qm9
+#     dataset = QM9(root="/tmp/QM9")
+#     dataset_name = "QM9"
+
+#     # filmconv
+#     model_name = "FiLMConv"
+#     loader = DataLoader(dataset, batch_size=Config.batch_size, shuffle=True)
+#     model = FiLMConv(in_channels=11, out_channels=2048).cuda()
+#     stats = inference_with_profs(model, loader)
 
 
 # get dataloader w shuffle
@@ -71,7 +113,7 @@ with warnings.catch_warnings():
     # filmconv
     model_name = "FiLMConv"
     loader = DataLoader(dataset, batch_size=Config.batch_size, shuffle=True)
-    model = FiLMConv(in_channels=11, out_channels=2048).cuda()
+    model = FiLMConv(in_channels=11, out_channels=2048).to(torch.float16).cuda()
     stats = inference(model, loader)
     print(f"Statistics for model {model_name} and dataset {dataset_name}")
     print(f"\t{get_stats_summary(stats)}")
@@ -84,7 +126,7 @@ with warnings.catch_warnings():
     # GIN
     model_name = "GIN"
     loader = DataLoader(dataset, batch_size=Config.batch_size, shuffle=True)
-    model = GINConv(torch.nn.Linear(11, 2048)).cuda()
+    model = GINConv(torch.nn.Linear(11, 2048)).to(torch.float16).cuda()
     stats = inference(model, loader)
     print(f"Statistics for model {model_name} and dataset {dataset_name}")
     print(f"\t{get_stats_summary(stats)}")
@@ -97,7 +139,7 @@ with warnings.catch_warnings():
     # CGConv
     model_name = "CGConv"
     loader = DataLoader(dataset, batch_size=Config.batch_size, shuffle=True)
-    model = CGConv(11, 0).cuda()
+    model = CGConv(11, 0).to(torch.float16).cuda()
     stats = inference(model, loader)
     print(f"Statistics for model {model_name} and dataset {dataset_name}")
     print(f"\t{get_stats_summary(stats)}")
@@ -114,13 +156,17 @@ with warnings.catch_warnings():
     # pnaconv
     model_name = "PNA"
     loader = DataLoader(dataset, batch_size=Config.batch_size, shuffle=True)
-    model = PNAConv(
-        in_channels=1,
-        out_channels=2048,
-        aggregators=["mean", "min", "max", "std"],
-        scalers=["identity", "amplification", "attenuation"],
-        deg=get_degree_hist(dataset),
-    ).cuda()
+    model = (
+        PNAConv(
+            in_channels=1,
+            out_channels=2048,
+            aggregators=["mean", "min", "max", "std"],
+            scalers=["identity", "amplification", "attenuation"],
+            deg=get_degree_hist(dataset),
+        )
+        .to(torch.float16)
+        .cuda()
+    )
     stats = inference(model, loader)
     print(f"Statistics for model {model_name} and dataset {dataset_name}")
     print(f"\t{get_stats_summary(stats)}")
