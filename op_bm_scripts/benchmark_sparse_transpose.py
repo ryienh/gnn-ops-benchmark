@@ -12,7 +12,7 @@ from graph_benchmark.benchmark.util import *
 
 def op_native_transpose(matA):
     """only swap 0 and 1 dims as that what torch_sparse.transpose supports."""
-    out = torch.transpose(matA, 0, 1)
+    out = torch.transpose(matA, 0, 1).contiguous()
     return out
 
 
