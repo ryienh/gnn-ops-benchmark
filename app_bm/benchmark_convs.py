@@ -1,3 +1,4 @@
+from asyncio import transports
 import torch
 import torch_geometric
 import warnings
@@ -10,10 +11,10 @@ from torch_geometric.profile import (
     get_model_size,
     get_data_size,
 )
-from torch_geometric.datasets import QM9, GNNBenchmarkDataset, GEDDataset, IMDB
+from torch_geometric.datasets import QM9, GNNBenchmarkDataset, TUDataset
 from torch_geometric.loader import DataLoader
 from torch_geometric.utils import degree
-
+from torch_geometric.transforms import OneHotDegree
 
 # hyperparams
 class Config:
@@ -174,7 +175,24 @@ with warnings.catch_warnings():
     print(
         f"\tData example theoretical data usage in mb: {get_data_size(next(iter(loader))) * 1e-6}"
     )
+    print()
 
     # IMDBMULTI
+    dataset = TUDataset(
+        root="/tmp/IMDB-MULTI", name="IMDB-MULTI", transform=OneHotDegree(88)
+    )
+    dataset_name = "IMDB-MULTI"
 
+    # SAGEConv
+    model_name = "GraphSAGE"
+    loader = DataLoader(dataset, batch_size=Config.batch_size, shuffle=True)
+    model = SAGEConv(-1, 2048).to(torch.float16).cuda()
+    stats = inference(model, loader)
+    print(f"Statistics for model {model_name} and dataset {dataset_name}")
+    print(f"\t{get_stats_summary(stats)}")
+    print(f"\tModel actual disk size in mb: {get_model_size(model) * 1e-6}")
+    print(
+        f"\tData example theoretical data usage in mb: {get_data_size(next(iter(loader))) * 1e-6}"
+    )
+    print()
     #
