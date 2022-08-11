@@ -1,7 +1,7 @@
 Statistics for model FiLMConv and dataset QM9
-	0.6330114659370016
+	0.4376421181606673
 	Model actual disk size in mb: 0.280347
-	Data example theoretical data usage in mb: 0.002068
+	Data example theoretical data usage in mb: 0.0027559999999999998
 
 Statistics for model GIN and dataset QM9
 	0.1880324406619744
@@ -9,9 +9,9 @@ Statistics for model GIN and dataset QM9
 	Data example theoretical data usage in mb: 0.002956
 
 Statistics for model CGConv and dataset QM9
-	0.29353259068584114
+	0.2982936612109548
 	Model actual disk size in mb: 0.002591
-	Data example theoretical data usage in mb: 0.002484
+	Data example theoretical data usage in mb: 0.002892
 
 Statistics for model PNA and dataset MNIST
 	1.0495190657291216
@@ -22,4 +22,3 @@ Statistics for model GraphSAGE and dataset IMDB-MULTI
 	0.2632418956953226
 	Model actual disk size in mb: 0.734499
 	Data example theoretical data usage in mb: 0.004452
-
