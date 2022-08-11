@@ -22,7 +22,7 @@ setup_seed(42)
 op_name = "sparse_transpose"
 num_bm_runs = 100
 
-lengths_ = np.linspace(4_000_000, 100_000_000, num=100).tolist()
+lengths_ = np.linspace(4_000_000, 50_000_000, num=100).tolist()
 lengths_ = [int(math.sqrt(x)) for x in lengths_]
 tshapes = [(length_, length_) for length_ in lengths_]
 sparsities = [0.995]
