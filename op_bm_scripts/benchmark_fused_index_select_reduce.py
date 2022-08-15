@@ -9,9 +9,14 @@ sys.path.insert(0, "/home/rhosseini/gnn-kernel-benchmark")  # FIXME
 from graph_benchmark.benchmark.util import *
 
 
-def op_native_index_select(input, dim, index):
-    """Computes index select operation"""
-    out = torch.index_select(input=input, dim=dim, index=index)
+@torch.jit.script
+def fused_gelu(input, dim: int, index):
+    out = torch.index_select(input, dim, index).sum()
+    return out
+
+
+def gelu(input, dim, index):
+    out = torch.index_select(input, dim, index).sum()
     return out
 
 
@@ -35,13 +40,13 @@ op_name = "fused_index_select_reduce"
 # ]
 
 
-lengths_ = np.linspace(7_500_000, 200_000_000, num=10).tolist()
+lengths_ = np.linspace(7_500_000, 200_000_000, num=100).tolist()
 lengths_ = [int(math.sqrt(x)) for x in lengths_]
 sparsities = [0]
 
 
 tshapes = [(length_, length_) for length_ in lengths_]
-num_bm_runs = 1
+num_bm_runs = 100
 
 
 # create data (list of dicts) for csv creation
@@ -91,8 +96,8 @@ for sparsity in sparsities:
 
                 # begin benchmark logic
                 t0 = benchmark.Timer(
-                    stmt="op_native_index_select(input, dim, index)",
-                    setup="from __main__ import op_native_index_select",
+                    stmt="fused_gelu(input, dim, index)",
+                    setup="from __main__ import fused_gelu",
                     globals={"input": input, "dim": dim, "index": index},
                 )
 
@@ -111,6 +116,19 @@ for sparsity in sparsities:
 
                 mem = get_reserved_in_mb()
 
+                # begin benchmark logic
+                t1 = benchmark.Timer(
+                    stmt="gelu(input, dim, index)",
+                    setup="from __main__ import gelu",
+                    globals={"input": input, "dim": dim, "index": index},
+                )
+
+                bm_no_fuse = t1.timeit(num_bm_runs)
+                bm_val_no_fuse = bm_no_fuse.median
+                bm_iqr_no_fuse = bm_no_fuse.iqr
+
+                del t1
+
                 print_util_info()
 
                 input_dims_str = str(len(tshape))
@@ -124,6 +142,7 @@ for sparsity in sparsities:
                 formatted_input_dims = str(tshape)
 
                 bm_val = str(bm_val) + "(" + str(bm_iqr) + ")"
+                bm_val_no_fuse = str(bm_val_no_fuse) + "(" + str(bm_iqr_no_fuse) + ")"
 
                 data.append(
                     [
@@ -134,6 +153,7 @@ for sparsity in sparsities:
                         input_mem,
                         mem,
                         bm_val,
+                        bm_val_no_fuse,
                     ]
                 )
 
@@ -144,14 +164,15 @@ for sparsity in sparsities:
                 counter += 1
 
 
-# df = pd.DataFrame(data)
-# df.columns = [
-#     "Input dims, index dim, reduce factor (RF)",
-#     "Input size",
-#     "Sparsity",
-#     "Total elements",
-#     "Input memory",
-#     "Total Memory",
-#     "GPU clock time (IQR)",
-# ]
-# df.to_csv(f"mem_prof_data/{op_name}.csv")
+df = pd.DataFrame(data)
+df.columns = [
+    "Input dims, index dim, reduce factor (RF)",
+    "Input size",
+    "Sparsity",
+    "Total elements",
+    "Input memory",
+    "Total Memory",
+    "GPU clock time (fuse) (IQR)",
+    "GPU clock time (no fuse) (IQR)",
+]
+df.to_csv(f"mem_prof_data/{op_name}.csv")
