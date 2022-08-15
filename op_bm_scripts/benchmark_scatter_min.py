@@ -30,7 +30,7 @@ reduce_f_ = [1, 2, 4, 8]
 #     (int(length_),),
 #     (int(length__), int(length__)),
 # ]
-lengths_ = np.linspace(1_500_000, 45_000_000, num=100).tolist()
+lengths_ = np.linspace(50_000, 2_000_000, num=100).tolist()  # 1_500_000, 45_000_000
 lengths_ = [int(math.sqrt(x)) for x in lengths_]
 sparsities = [0]
 num_bm_runs = 100
@@ -140,4 +140,4 @@ df.columns = [
     "Total Memory",
     "GPU clock time py geo (IQR)",
 ]
-df.to_csv(f"mem_prof_data/{op_name}.csv")
+df.to_csv(f"mem_prof_data/{op_name}_small.csv")

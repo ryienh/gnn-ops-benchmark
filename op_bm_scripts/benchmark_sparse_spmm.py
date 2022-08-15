@@ -25,10 +25,10 @@ op_name = "sparse_spmm"
 # length___ = int(4000 * 6.5 * 1.15)
 # sparsities = [0.5, 0.9, 0.99]
 
-lengths_ = np.linspace(2_000_000, 50_000_000, num=100).tolist()
+lengths_ = np.linspace(2_000_000, 50_000_000, num=10).tolist()
 lengths_ = [int(math.sqrt(x)) for x in lengths_]
 sparsities = [0.999]
-num_bm_runs = 100
+num_bm_runs = 1
 
 
 tshapes = [[(length_, length_), (length_, length_)] for length_ in lengths_]
@@ -148,14 +148,14 @@ for sparsity_A in sparsities:
             print(f"done with {counter}")
             counter += 1
 
-df = pd.DataFrame(data)
-df.columns = [
-    "Input dims",
-    "Input size",
-    "Sparsities (matA, matB)",
-    "Total elements",
-    "Input memory",
-    "Total Memory",
-    "GPU clock time (IQR)",
-]
-df.to_csv(f"mem_prof_data/{op_name}.csv")
+# df = pd.DataFrame(data)
+# df.columns = [
+#     "Input dims",
+#     "Input size",
+#     "Sparsities (matA, matB)",
+#     "Total elements",
+#     "Input memory",
+#     "Total Memory",
+#     "GPU clock time (IQR)",
+# ]
+# df.to_csv(f"mem_prof_data/{op_name}.csv")

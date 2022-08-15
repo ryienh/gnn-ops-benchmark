@@ -36,10 +36,10 @@ op_name = "native_index_add_"
 #     # (length___, length___, length___),
 # ]
 
-lengths_ = np.linspace(2_500_000, 100_000_000, num=100).tolist()
+lengths_ = np.linspace(2_500_000, 100_000_000, num=10).tolist()
 lengths_ = [int(math.sqrt(x)) for x in lengths_]
 sparsities = [0]
-num_bm_runs = 100
+num_bm_runs = 1
 
 
 tshapes = [(length_, length_) for length_ in lengths_]
@@ -145,14 +145,14 @@ for sparsity in sparsities:
             print(f"done with {counter}")
             counter += 1
 
-df = pd.DataFrame(data)
-df.columns = [
-    "Input dims, index dim",
-    "Input size",
-    "Sparsity",
-    "Total elements",
-    "Input memory",
-    "TOtal Memory",
-    "GPU clock time (IQR)",
-]
-df.to_csv(f"mem_prof_data/{op_name}.csv")
+# df = pd.DataFrame(data)
+# df.columns = [
+#     "Input dims, index dim",
+#     "Input size",
+#     "Sparsity",
+#     "Total elements",
+#     "Input memory",
+#     "TOtal Memory",
+#     "GPU clock time (IQR)",
+# ]
+# df.to_csv(f"mem_prof_data/{op_name}.csv")

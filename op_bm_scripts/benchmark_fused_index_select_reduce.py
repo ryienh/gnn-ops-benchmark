@@ -18,7 +18,7 @@ def op_native_index_select(input, dim, index):
 # Configurable hyperparams here
 # dimensions: src size, idx size, src sparsity
 # scatter_mean required 0.82 reduction factor
-op_name = "native_index_select"
+op_name = "fused_index_select_reduce"
 # native_exists = True
 # length_ = int(1600384000 * 1.6)
 # length__ = int(2048)

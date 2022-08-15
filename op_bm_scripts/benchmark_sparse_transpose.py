@@ -20,9 +20,9 @@ def op_native_transpose(matA):
 # dimensions: src size, idx size, src sparsity
 setup_seed(42)
 op_name = "sparse_transpose"
-num_bm_runs = 100
+num_bm_runs = 1
 
-lengths_ = np.linspace(4_000_000, 50_000_000, num=100).tolist()
+lengths_ = np.linspace(4_000_000, 50_000_000, num=10).tolist()
 lengths_ = [int(math.sqrt(x)) for x in lengths_]
 tshapes = [(length_, length_) for length_ in lengths_]
 sparsities = [0.995]
@@ -116,14 +116,14 @@ for sparsity in sparsities:
         print(f"done with {counter}")
         counter += 1
 
-df = pd.DataFrame(data)
-df.columns = [
-    "Input Shape",
-    "Input size",
-    "Sparsities (matA)",
-    "Total elements",
-    "Input memory",
-    "Total memory",
-    "GPU clock time (IQR)",
-]
-df.to_csv(f"mem_prof_data/{op_name}.csv")
+# df = pd.DataFrame(data)
+# df.columns = [
+#     "Input Shape",
+#     "Input size",
+#     "Sparsities (matA)",
+#     "Total elements",
+#     "Input memory",
+#     "Total memory",
+#     "GPU clock time (IQR)",
+# ]
+# df.to_csv(f"mem_prof_data/{op_name}.csv")

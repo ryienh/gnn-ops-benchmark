@@ -36,12 +36,12 @@ op_name = "native_gather"
 #     (length___, length___, length___),
 # ]
 
-lengths_ = np.linspace(1_500_000, 40_000_000, num=100).tolist()
+lengths_ = np.linspace(1_500_000, 40_000_000, num=10).tolist()
 lengths_ = [int(math.sqrt(x)) for x in lengths_]
 # length__ = int(math.sqrt(3495200))
 # length___ = int(math.sqrt(3495200))
 sparsities = [0]
-num_bm_runs = 100
+num_bm_runs = 1
 
 
 tshapes = [
@@ -147,14 +147,14 @@ for sparsity in sparsities:
             counter += 1
 
 
-df = pd.DataFrame(data)
-df.columns = [
-    "Input dims",
-    "Input size",
-    "Sparsity",
-    "Total elements",
-    "Input memory",
-    "Total Memory",
-    "GPU clock time (IQR)",
-]
-df.to_csv(f"mem_prof_data/{op_name}.csv")
+# df = pd.DataFrame(data)
+# df.columns = [
+#     "Input dims",
+#     "Input size",
+#     "Sparsity",
+#     "Total elements",
+#     "Input memory",
+#     "Total Memory",
+#     "GPU clock time (IQR)",
+# ]
+# df.to_csv(f"mem_prof_data/{op_name}.csv")

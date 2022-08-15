@@ -20,7 +20,9 @@ def op_native_addmm(input, mat1, mat2):
 # dimensions: src size, idx size, src sparsity
 setup_seed(42)
 op_name = "native_addmm"
-lengths_ = np.linspace(2_500_000, 66_666_667, num=100).tolist()
+lengths_ = np.linspace(
+    2_500_000, 66_666_667, num=100
+).tolist()  # small used 500-2_666_667
 lengths_ = [int(math.sqrt(x)) for x in lengths_]
 sparsities = [0]
 num_bm_runs = 100

@@ -15,11 +15,12 @@ from torch_geometric.datasets import QM9, GNNBenchmarkDataset, TUDataset
 from torch_geometric.loader import DataLoader
 from torch_geometric.utils import degree
 from torch_geometric.transforms import OneHotDegree
+import numpy as np
 
 # hyperparams
 class Config:
-    n = 100
-    batch_size = 512
+    n = 300
+    batch_size = 1
 
 
 def get_degree_hist(train_dataset):
@@ -37,26 +38,41 @@ def get_degree_hist(train_dataset):
     return deg
 
 
-@profileit()
-def run_single_inst(model, x, edge_index):
-    _ = model(x, edge_index)
+# def run_single_inst(model, x, edge_index):
+#     starter.record()
+#     _ = model(x, edge_index)
+#     ender.record()
+#     torch.cuda.synchronize()
+#     curr_time = starter.elapsed_time(ender)
+#     return curr_time
 
 
-def inference(model, loader):
+def inference(model, loader, start, end):
 
     stats = []
-
+    warmup_cnt = 0
     for idx, data in tqdm.tqdm(enumerate(loader), total=Config.n):
 
-        x = data.x.to(torch.float16).cuda()
-        edge_index = data.edge_index.cuda()
+        with torch.no_grad():
 
-        # total compute only
-        stat = run_single_inst(model, x, edge_index)[1]
-        stats.append(stat)
+            x = data.x.to(torch.float16).cuda()
+            edge_index = data.edge_index.cuda()
 
-        if idx == Config.n:
-            break
+            # total compute only
+            if warmup_cnt < 10:
+                _ = model(x, edge_index)
+            else:
+                start.record()
+                _ = model(x, edge_index)
+                end.record()
+                torch.cuda.synchronize()
+                stat = start.elapsed_time(end)
+                stats.append(stat)
+
+            if idx == Config.n:
+                break
+
+        warmup_cnt += 1
 
     return stats
 
@@ -105,6 +121,8 @@ def inference_with_profs(model, loader):
 
 # get dataloader w shuffle
 with warnings.catch_warnings():
+
+    torch.cuda.empty_cache()
     warnings.simplefilter(action="ignore", category=FutureWarning)
 
     # qm9
@@ -112,49 +130,71 @@ with warnings.catch_warnings():
     dataset_name = "QM9"
 
     # filmconv
+    torch.cuda.empty_cache()
+    starter, ender = torch.cuda.Event(enable_timing=True), torch.cuda.Event(
+        enable_timing=True
+    )
     model_name = "FiLMConv"
     loader = DataLoader(dataset, batch_size=Config.batch_size, shuffle=True)
     model = FiLMConv(in_channels=11, out_channels=2048).to(torch.float16).cuda()
-    stats = inference(model, loader)
+    stats = np.array(inference(model, loader, starter, ender))
     print(f"Statistics for model {model_name} and dataset {dataset_name}")
-    print(f"\t{get_stats_summary(stats)}")
+    print(f"\t{np.mean(stats)}")
     print(f"\tModel actual disk size in mb: {get_model_size(model) * 1e-6}")
     print(
         f"\tData example theoretical data usage in mb: {get_data_size(next(iter(loader))) * 1e-6}"
     )
     print()
 
+    del starter, ender
+
     # GIN
+    torch.cuda.empty_cache()
+    starter, ender = torch.cuda.Event(enable_timing=True), torch.cuda.Event(
+        enable_timing=True
+    )
     model_name = "GIN"
     loader = DataLoader(dataset, batch_size=Config.batch_size, shuffle=True)
     model = GINConv(torch.nn.Linear(11, 2048)).to(torch.float16).cuda()
-    stats = inference(model, loader)
+    stats = inference(model, loader, starter, ender)
+    stats = np.array(stats)
     print(f"Statistics for model {model_name} and dataset {dataset_name}")
-    print(f"\t{get_stats_summary(stats)}")
+    print(f"\t{np.mean(stats)}")
     print(f"\tModel actual disk size in mb: {get_model_size(model) * 1e-6}")
     print(
         f"\tData example theoretical data usage in mb: {get_data_size(next(iter(loader))) * 1e-6}"
     )
     print()
 
+    del starter, ender
+
     # CGConv
+    torch.cuda.empty_cache()
+    starter, ender = torch.cuda.Event(enable_timing=True), torch.cuda.Event(
+        enable_timing=True
+    )
     model_name = "CGConv"
     loader = DataLoader(dataset, batch_size=Config.batch_size, shuffle=True)
     model = CGConv(11, 0).to(torch.float16).cuda()
-    stats = inference(model, loader)
+    stats = np.array(inference(model, loader, starter, ender))
     print(f"Statistics for model {model_name} and dataset {dataset_name}")
-    print(f"\t{get_stats_summary(stats)}")
+    print(f"\t{np.mean(stats)}")
     print(f"\tModel actual disk size in mb: {get_model_size(model) * 1e-6}")
     print(
         f"\tData example theoretical data usage in mb: {get_data_size(next(iter(loader))) * 1e-6}"
     )
     print()
+    del starter, ender
 
     # MNIST
     dataset = GNNBenchmarkDataset(root="/tmp/MNIST", name="MNIST")
     dataset_name = "MNIST"
 
     # pnaconv
+    torch.cuda.empty_cache()
+    starter, ender = torch.cuda.Event(enable_timing=True), torch.cuda.Event(
+        enable_timing=True
+    )
     model_name = "PNA"
     loader = DataLoader(dataset, batch_size=Config.batch_size, shuffle=True)
     model = (
@@ -168,14 +208,15 @@ with warnings.catch_warnings():
         .to(torch.float16)
         .cuda()
     )
-    stats = inference(model, loader)
+    stats = np.array(inference(model, loader, starter, ender))
     print(f"Statistics for model {model_name} and dataset {dataset_name}")
-    print(f"\t{get_stats_summary(stats)}")
+    print(f"\t{np.mean(stats)}")
     print(f"\tModel actual disk size in mb: {get_model_size(model) * 1e-6}")
     print(
         f"\tData example theoretical data usage in mb: {get_data_size(next(iter(loader))) * 1e-6}"
     )
     print()
+    del starter, ender
 
     # IMDBMULTI
     dataset = TUDataset(
@@ -184,15 +225,22 @@ with warnings.catch_warnings():
     dataset_name = "IMDB-MULTI"
 
     # SAGEConv
+    torch.cuda.empty_cache()
+    starter, ender = torch.cuda.Event(enable_timing=True), torch.cuda.Event(
+        enable_timing=True
+    )
     model_name = "GraphSAGE"
     loader = DataLoader(dataset, batch_size=Config.batch_size, shuffle=True)
     model = SAGEConv(-1, 2048).to(torch.float16).cuda()
-    stats = inference(model, loader)
+    stats = np.array(inference(model, loader, starter, ender))
     print(f"Statistics for model {model_name} and dataset {dataset_name}")
-    print(f"\t{get_stats_summary(stats)}")
+    print(f"\t{np.mean(stats)}")
     print(f"\tModel actual disk size in mb: {get_model_size(model) * 1e-6}")
     print(
         f"\tData example theoretical data usage in mb: {get_data_size(next(iter(loader))) * 1e-6}"
     )
     print()
-    #
+    del starter, ender
+    #####
+    # cache test
+    # more tests

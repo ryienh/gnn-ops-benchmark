@@ -20,7 +20,9 @@ def op_native_matmul(input, other):
 # dimensions: src size, idx size, src sparsity
 setup_seed(42)
 op_name = "native_matmul"
-lengths_ = np.linspace(2_500_000, 66_666_667, num=100).tolist()
+lengths_ = np.linspace(
+    2_500_000, 66_666_667, num=100
+).tolist()  # _small used 20,000,000
 lengths_ = [int(math.sqrt(x)) for x in lengths_]
 sparsities = [0]
 num_bm_runs = 100
@@ -134,4 +136,4 @@ df.columns = [
     "Total Memory",
     "GPU clock time (IQR)",
 ]
-df.to_csv(f"mem_prof_data/{op_name}.csv")
+df.to_csv(f"mem_prof_data/{op_name}.csv")  # _small
