@@ -1,0 +1,25 @@
+Statistics for model FiLMConv and dataset QM9
+	StatsSummary(time_mean=0.010685590095818043, time_std=0.07451555877923965, max_allocated_cuda=1.67, max_reserved_cuda=2.0, max_active_cuda=1.67, min_nvidia_smi_free_cuda=40493.07, max_nvidia_smi_used_cuda=2008.93)
+	Model actual disk size in mb: 0.280347
+	Data example theoretical data usage in mb: 0.002404
+
+Statistics for model GIN and dataset QM9
+	StatsSummary(time_mean=0.0018398958491161466, time_std=5.294748552842066e-05, max_allocated_cuda=0.41, max_reserved_cuda=2.0, max_active_cuda=0.41, min_nvidia_smi_free_cuda=40493.07, max_nvidia_smi_used_cuda=2008.93)
+	Model actual disk size in mb: 0.050467
+	Data example theoretical data usage in mb: 0.003364
+
+Statistics for model CGConv and dataset QM9
+	StatsSummary(time_mean=0.001946009579114616, time_std=6.455853144871071e-05, max_allocated_cuda=0.33, max_reserved_cuda=2.0, max_active_cuda=0.33, min_nvidia_smi_free_cuda=40493.07, max_nvidia_smi_used_cuda=2008.93)
+	Model actual disk size in mb: 0.002591
+	Data example theoretical data usage in mb: 0.002476
+
+Statistics for model PNA and dataset MNIST
+	StatsSummary(time_mean=0.0035292303655296564, time_std=0.00040874630212783813, max_allocated_cuda=8.95, max_reserved_cuda=22.0, max_active_cuda=8.95, min_nvidia_smi_free_cuda=40472.1, max_nvidia_smi_used_cuda=2029.9)
+	Model actual disk size in mb: 8.452247
+	Data example theoretical data usage in mb: 0.013163999999999999
+
+Statistics for model GraphSAGE and dataset IMDB-MULTI
+	StatsSummary(time_mean=0.0023031875025480986, time_std=6.04266970185563e-05, max_allocated_cuda=9.17, max_reserved_cuda=22.0, max_active_cuda=9.17, min_nvidia_smi_free_cuda=40472.1, max_nvidia_smi_used_cuda=2029.9)
+	Model actual disk size in mb: 0.734499
+	Data example theoretical data usage in mb: 0.036351999999999995
+
