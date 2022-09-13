@@ -1,5 +1,5 @@
 # gnn-ops-benchmark
-Profiling GNNs for scientific computing and benchmarking Pytorch and Pytorch Geometric operations relevant to SOTA graph neural network architectures. Used for [Operation-Level Performance Benchmarking of Graph Neural Networks for Scientific Applications](https://arxiv.org/pdf/2207.09955.pdf)
+Profiling GNNs for scientific computing and benchmarking Pytorch and Pytorch Geometric operations relevant to SOTA graph neural network architectures. Accompanying code for [Operation-Level Performance Benchmarking of Graph Neural Networks for Scientific Applications](https://arxiv.org/pdf/2207.09955.pdf)
 
 ## Repo organization
 
