@@ -84,7 +84,7 @@ This research used resources of the Argonne Leadership Computing Facility, which
 
 # Citing this work
 If you found this work useful for your research, please cite our workshop paper using the following Bibtex snippet:
-
+```
 @misc{https://doi.org/10.48550/arxiv.2207.09955,
   doi = {10.48550/ARXIV.2207.09955},
   
@@ -102,6 +102,6 @@ If you found this work useful for your research, please cite our workshop paper 
   
   copyright = {Creative Commons Attribution 4.0 International}
 }
-
+```
 
 
