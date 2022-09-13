@@ -1,5 +1,5 @@
 # gnn-ops-benchmark
-Profiling GNNs for scientific computing and benchmarking Pytorch and Pytorch Geometric operations relevant to SOTA graph neural network architectures
+Profiling GNNs for scientific computing and benchmarking Pytorch and Pytorch Geometric operations relevant to SOTA graph neural network architectures. Used for [Operation-Level Performance Benchmarking of Graph Neural Networks for Scientific Applications](https://arxiv.org/pdf/2207.09955.pdf)
 
 ## Repo organization
 
@@ -78,11 +78,30 @@ Raw data from benchmarking all operations in the `./op_bm_scripts` directory on 
 
 Visualizations for each of these operations are found in the `./notebooks/gnn_bm_analysis.ipynb` notebook. The notebook need not be rerun if one is interested in the data from our benchmarking. Simply view the notebook outputs, either locally, or online through the github interface. 
 
-
-
-
-
 ## Acknowledgements
 
 This research used resources of the Argonne Leadership Computing Facility, which is a DOE Office of Science User Facility supported under Contract DE-AC02-06CH11357.
+
+# Citing this work
+If you found this work useful for your research, please cite our workshop paper using the following Bibtex snippet:
+
+@misc{https://doi.org/10.48550/arxiv.2207.09955,
+  doi = {10.48550/ARXIV.2207.09955},
+  
+  url = {https://arxiv.org/abs/2207.09955},
+  
+  author = {Hosseini, Ryien and Simini, Filippo and Vishwanath, Venkatram},
+  
+  keywords = {Machine Learning (cs.LG), Artificial Intelligence (cs.AI), Hardware Architecture (cs.AR), Performance (cs.PF), FOS: Computer and information sciences, FOS: Computer and information sciences},
+  
+  title = {Operation-Level Performance Benchmarking of Graph Neural Networks for Scientific Applications},
+  
+  publisher = {arXiv},
+  
+  year = {2022},
+  
+  copyright = {Creative Commons Attribution 4.0 International}
+}
+
+
 
