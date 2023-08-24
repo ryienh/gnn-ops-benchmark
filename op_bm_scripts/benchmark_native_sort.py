@@ -75,9 +75,9 @@ for sparsity in sparsities:
                 if dim >= len(tshape):
                     continue
 
-                torch.cuda.nvtx.range_push(
-                    f"sparsity: {sparsity}, tshape: {tshape}, dim: {dim}, stable: {stable}"
-                )
+                # torch.cuda.nvtx.range_push(
+                #     f"sparsity: {sparsity}, tshape: {tshape}, dim: {dim}, stable: {stable}"
+                # )
 
                 with torch.autograd.profiler.emit_nvtx():
 
@@ -86,7 +86,7 @@ for sparsity in sparsities:
 
                     input = torch.rand(
                         size=tshape,
-                        device="cuda",
+                        device=device,
                         dtype=torch.float32,
                         requires_grad=False,
                     )

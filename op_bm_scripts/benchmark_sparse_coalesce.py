@@ -63,10 +63,11 @@ data = []
 
 # cuda stuff
 device = "cuda" if torch.cuda.is_available() else "cpu"
-if device == "cpu":
-    raise Exception("Benchmarking only supported for CUDA")
+# if device == "cpu":
+#     raise Exception("Benchmarking only supported for CUDA")
 
-torch.cuda.empty_cache()
+if device == "cuda":
+    torch.cuda.empty_cache()
 counter = 0
 # bp()
 # define inputs over hyperparams
@@ -74,7 +75,8 @@ for sparsity in sparsities:
     for tshape in tshapes:
         for reduce_factor in [1, 2, 4, 8]:
 
-            torch.cuda.empty_cache()
+            if device == "cuda":
+                torch.cuda.empty_cache()
 
             # if dim >= len(tshape):
             #     continue
@@ -86,35 +88,41 @@ for sparsity in sparsities:
 
             mat = torch.rand(
                 size=tshape,
-                device="cuda",
+                device=device,
                 dtype=torch.float32,
                 requires_grad=False,
             )
 
-            torch.cuda.empty_cache()
+            if device == "cuda":
+                torch.cuda.empty_cache()
 
             # randomly drop values to create sparsity
 
             mat = torch.nn.functional.dropout(
                 mat, p=sparsity, training=True, inplace=False
             )
-
-            torch.cuda.empty_cache()
+            if device == "cuda":
+                torch.cuda.empty_cache()
 
             m = mat.shape[0] * reduce_factor
             n = mat.shape[1] * reduce_factor
 
-            torch.cuda.empty_cache()
+            if device == "cuda":
+                torch.cuda.empty_cache()
 
             # print("Converting to COO")
             mat = mat.to_sparse()
-            torch.cuda.empty_cache()
+
+            if device == "cuda":
+                torch.cuda.empty_cache()
 
             # print("Converted to COO")
 
             index_ = mat.indices()
             value_ = mat.values()
-            torch.cuda.empty_cache()
+
+            if device == "cuda":
+                torch.cuda.empty_cache()
 
             # print(f"Reduce factor is {reduce_factor}")
 
@@ -127,7 +135,7 @@ for sparsity in sparsities:
                 value = torch.cat((value_, value_))
 
                 index = index.index_select(
-                    1, torch.randperm(index.shape[1], device="cuda")
+                    1, torch.randperm(index.shape[1], device=device)
                 )
 
             if reduce_factor == 4:
@@ -135,7 +143,7 @@ for sparsity in sparsities:
                 value = torch.cat((value_, value_, value_, value_))
 
                 index = index.index_select(
-                    1, torch.randperm(index.shape[1], device="cuda")
+                    1, torch.randperm(index.shape[1], device=device)
                 )
 
             if reduce_factor == 8:
@@ -147,16 +155,20 @@ for sparsity in sparsities:
                     (value_, value_, value_, value_, value_, value_, value_, value_)
                 )
                 index = index.index_select(
-                    1, torch.randperm(index.shape[1], device="cuda")
+                    1, torch.randperm(index.shape[1], device=device)
                 )
 
             del mat
-            torch.cuda.empty_cache()
+
+            if device == "cuda":
+                torch.cuda.empty_cache()
             mat = torch.sparse_coo_tensor(index, value, (m, n))
 
             del index_
             del value_
-            torch.cuda.empty_cache()
+
+            if device == "cuda":
+                torch.cuda.empty_cache()
 
             # print(f"DEBUGGGGG: is coalesced: {mat.is_coalesced()}")
 
@@ -178,7 +190,8 @@ for sparsity in sparsities:
             del m0
             del t0
 
-            torch.cuda.empty_cache()
+            if device == "cuda":
+                torch.cuda.empty_cache()
 
             print("Begin benchmark logic (native)")
             t1 = benchmark.Timer(
